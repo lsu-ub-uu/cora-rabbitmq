@@ -26,6 +26,8 @@
 	<name>rabbitmq</name>
 
 	<properties>
+		<messaging.version>1.0-SNAPSHOT</messaging.version>
+		<logger.version>1.0.0</logger.version>
 	</properties>
 
 	<scm>
@@ -41,6 +43,18 @@
 			<artifactId>testng</artifactId>
 			<version>${testng.version}</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>se.uu.ub.cora</groupId>
+			<artifactId>messaging</artifactId>
+			<version>${messaging.version}</version>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>se.uu.ub.cora</groupId>
+			<artifactId>logger</artifactId>
+			<version>${logger.version}</version>
+			<scope>provided</scope>
 		</dependency>
 	</dependencies>
 </project>
