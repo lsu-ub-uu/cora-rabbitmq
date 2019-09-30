@@ -28,6 +28,7 @@
 	<properties>
 		<messaging.version>1.0-SNAPSHOT</messaging.version>
 		<logger.version>1.0.0</logger.version>
+		<rabbitMQ.version>5.6.0</rabbitMQ.version>
 	</properties>
 
 	<scm>
@@ -55,6 +56,11 @@
 			<artifactId>logger</artifactId>
 			<version>${logger.version}</version>
 			<scope>provided</scope>
+		</dependency>
+				<dependency>
+			<groupId>com.rabbitmq</groupId>
+			<artifactId>amqp-client</artifactId>
+			<version>${rabbitMQ.version}</version>
 		</dependency>
 	</dependencies>
 </project>

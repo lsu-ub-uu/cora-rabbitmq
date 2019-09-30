@@ -26,9 +26,9 @@ import se.uu.ub.cora.messaging.MessagingFactory;
 public class RabbitMqMessagingFactory implements MessagingFactory {
 
 	@Override
-	public MessageSender factorTopicSenderMessage(ChannelInfo channelInfo) {
+	public MessageSender factorTopicMessageSender(ChannelInfo channelInfo) {
 		// TODO Auto-generated method stub
-		return null;
+		return new RabbitMqTopicSender();
 	}
 
 }

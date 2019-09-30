@@ -23,14 +23,24 @@ import static org.testng.Assert.assertTrue;
 
 import org.testng.annotations.Test;
 
+import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingFactory;
 
 public class RabbitMqMessagingFactoryTest {
 
 	@Test
 	public void testInit() throws Exception {
-		RabbitMqMessagingFactory f = new RabbitMqMessagingFactory();
+		RabbitMqMessagingFactory factory = new RabbitMqMessagingFactory();
 
-		assertTrue(f instanceof MessagingFactory);
+		assertTrue(factory instanceof MessagingFactory);
+	}
+
+	@Test
+	public void testFactorReturnsRabbitMqTopicSender() throws Exception {
+
+		RabbitMqMessagingFactory factory = new RabbitMqMessagingFactory();
+		MessageSender messageSender = factory.factorTopicMessageSender(null);
+		assertTrue(messageSender instanceof RabbitMqTopicSender);
+
 	}
 }
