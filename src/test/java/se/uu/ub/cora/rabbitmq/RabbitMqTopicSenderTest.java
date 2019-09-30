@@ -110,6 +110,9 @@ public class RabbitMqTopicSenderTest {
 		Map<String, Object> publishedMessage = firstCreatedChannel.publishedMessages.get(0);
 
 		assertEquals(publishedMessage.get("body"), message.getBytes());
+		// TODO: How to verify headers? Create a BasicPropertiesSpy ??
+		// TODO: exchange value???
+		// assertEquals(publishedMessage.get("exchange"), "index");
 
 	}
 
