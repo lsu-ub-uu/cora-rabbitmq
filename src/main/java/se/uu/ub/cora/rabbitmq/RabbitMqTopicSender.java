@@ -19,36 +19,61 @@
 
 package se.uu.ub.cora.rabbitmq;
 
+import java.io.IOException;
 import java.util.Map;
 
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 
-import se.uu.ub.cora.messaging.ChannelInfo;
+import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
 
 public class RabbitMqTopicSender implements MessageSender {
 
 	private ConnectionFactory rabbitFactory;
+	private MessageRoutingInfo routingInfo;
 
-	public RabbitMqTopicSender(ConnectionFactory rabbitFactory, ChannelInfo channelInfo) {
+	public RabbitMqTopicSender(ConnectionFactory rabbitFactory, MessageRoutingInfo routingInfo) {
 		this.rabbitFactory = rabbitFactory;
-		rabbitFactory.setHost(channelInfo.hostname);
-		rabbitFactory.setPort(Integer.valueOf(channelInfo.port));
-		rabbitFactory.setVirtualHost(channelInfo.virtualHost);
+		this.routingInfo = routingInfo;
+		rabbitFactory.setHost(routingInfo.hostname);
+		rabbitFactory.setPort(Integer.valueOf(routingInfo.port));
+		rabbitFactory.setVirtualHost(routingInfo.virtualHost);
 	}
 
 	@Override
 	public void sendMessage(Map<String, Object> headers, String message) {
-		try {
-			Connection connection = rabbitFactory.newConnection();
-			Channel channel = connection.createChannel();
-			channel.basicPublish(null, null, null, message.getBytes());
+		tryToSendMessage(headers, message);
+	}
+
+	private void tryToSendMessage(Map<String, Object> headers, String message) {
+		try (Connection connection = rabbitFactory.newConnection();
+				Channel channel = connection.createChannel()) {
+			publishMessage(headers, message, channel);
 		} catch (Exception e) {
 			throw new MessagingInitializationException(e.getMessage());
 		}
+	}
+
+	private void publishMessage(Map<String, Object> headers, String message, Channel channel)
+			throws IOException {
+		String exchange = routingInfo.exchange;
+		String routingKey = routingInfo.routingKey;
+		BasicProperties props = createPropertiesWithHeaders(headers);
+		byte[] bytes = message.getBytes();
+
+		channel.basicPublish(exchange, routingKey, props, bytes);
+	}
+
+	private BasicProperties createPropertiesWithHeaders(Map<String, Object> headers) {
+		AMQP.BasicProperties.Builder builder = new AMQP.BasicProperties.Builder();
+		builder.contentType("application/json");
+		builder.headers(headers);
+		return builder.build();
 	}
 
 }

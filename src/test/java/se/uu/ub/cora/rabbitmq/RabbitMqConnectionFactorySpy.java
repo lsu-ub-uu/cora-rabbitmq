@@ -13,7 +13,7 @@ public class RabbitMqConnectionFactorySpy extends ConnectionFactory {
 	public String host;
 	public int port;
 	public String virtualHost;
-	public List<Connection> createdConnections = new ArrayList<>();
+	public List<RabbitMqConnectionSpy> createdConnections = new ArrayList<>();
 	public boolean throwErrorOnSendMessage = false;
 
 	@Override

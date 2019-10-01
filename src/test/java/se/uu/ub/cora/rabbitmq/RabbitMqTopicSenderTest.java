@@ -28,22 +28,25 @@ import java.util.Map;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import se.uu.ub.cora.messaging.ChannelInfo;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.AMQP.BasicProperties;
+
+import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
 
 public class RabbitMqTopicSenderTest {
 
 	private RabbitMqConnectionFactorySpy rabbitFactorySpy;
-	private ChannelInfo channelInfo;
+	private MessageRoutingInfo routingInfo;
 	private RabbitMqTopicSender messageSender;
 
 	@BeforeMethod
 	public void beforeMethod() {
 		rabbitFactorySpy = new RabbitMqConnectionFactorySpy();
-		channelInfo = new ChannelInfo("messaging.alvin-portal.org", "5672", "alvin",
+		routingInfo = new MessageRoutingInfo("messaging.alvin-portal.org", "5672", "alvin", "index",
 				"alvin.updates.#");
-		messageSender = new RabbitMqTopicSender(rabbitFactorySpy, channelInfo);
+		messageSender = new RabbitMqTopicSender(rabbitFactorySpy, routingInfo);
 	}
 
 	@Test
@@ -53,11 +56,11 @@ public class RabbitMqTopicSenderTest {
 
 	@Test
 	public void testSetConnectionFactoryChannel() throws Exception {
-		int portAsInt = Integer.valueOf(channelInfo.port).intValue();
+		int portAsInt = Integer.valueOf(routingInfo.port).intValue();
 
-		assertEquals(rabbitFactorySpy.host, channelInfo.hostname);
+		assertEquals(rabbitFactorySpy.host, routingInfo.hostname);
 		assertEquals(rabbitFactorySpy.port, portAsInt);
-		assertEquals(rabbitFactorySpy.virtualHost, channelInfo.virtualHost);
+		assertEquals(rabbitFactorySpy.virtualHost, routingInfo.virtualHost);
 	}
 
 	@Test
@@ -77,8 +80,7 @@ public class RabbitMqTopicSenderTest {
 	@Test
 	public void testSendMessageCreatesChannel() throws Exception {
 		messageSender.sendMessage(null, "");
-		RabbitMqConnectionSpy firstCreatedConnection = (RabbitMqConnectionSpy) rabbitFactorySpy.createdConnections
-				.get(0);
+		RabbitMqConnectionSpy firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
 		assertEquals(firstCreatedConnection.createdChannels.size(), 1);
 	}
 
@@ -87,33 +89,70 @@ public class RabbitMqTopicSenderTest {
 		String message = "";
 		Map<String, Object> headers = new HashMap<>();
 		messageSender.sendMessage(headers, message);
-		RabbitMqConnectionSpy firstCreatedConnection = (RabbitMqConnectionSpy) rabbitFactorySpy.createdConnections
-				.get(0);
+		RabbitMqConnectionSpy firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
 		RabbitMqChannelSpy firstCreatedChannel = firstCreatedConnection.createdChannels.get(0);
 		assertEquals(firstCreatedChannel.publishedMessages.size(), 1);
 	}
 
 	@Test
-	public void testPublishMessageAndHeaders() throws Exception {
+	public void testPublishMessage() throws Exception {
 		String message = "{\"pid\":\"alvin-place:1\",\"routingKey\":\"alvin.updates.place\","
 				+ "\"action\":\"UPDATE\",\"dsId\":null,"
 				+ "\"headers\":{\"ACTION\":\"UPDATE\",\"PID\":\"alvin-place:1\"}}";
+		messageSender.sendMessage(null, message);
+		Map<String, Object> publishedMessage = getFirstPublishedMessage();
+
+		assertEquals(publishedMessage.get("body"), message.getBytes());
+	}
+
+	private Map<String, Object> getFirstPublishedMessage() {
+		RabbitMqConnectionSpy firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
+		RabbitMqChannelSpy firstCreatedChannel = firstCreatedConnection.createdChannels.get(0);
+		Map<String, Object> publishedMessage = firstCreatedChannel.publishedMessages.get(0);
+		return publishedMessage;
+	}
+
+	@Test
+	public void testPublishMessageHeader() throws Exception {
 		Map<String, Object> headers = new HashMap<>();
 		headers.put("__TypeId__", "epc.messaging.amqp.EPCFedoraMessage");
 		headers.put("ACTION", "UPDATE");
 		headers.put("PID", "alvin-place:1");
 		headers.put("messageSentFrom", "Cora");
-		messageSender.sendMessage(headers, message);
-		RabbitMqConnectionSpy firstCreatedConnection = (RabbitMqConnectionSpy) rabbitFactorySpy.createdConnections
-				.get(0);
-		RabbitMqChannelSpy firstCreatedChannel = firstCreatedConnection.createdChannels.get(0);
-		Map<String, Object> publishedMessage = firstCreatedChannel.publishedMessages.get(0);
+		messageSender.sendMessage(headers, "");
 
-		assertEquals(publishedMessage.get("body"), message.getBytes());
-		// TODO: How to verify headers? Create a BasicPropertiesSpy ??
-		// TODO: exchange value???
-		// assertEquals(publishedMessage.get("exchange"), "index");
+		Map<String, Object> publishedMessage = getFirstPublishedMessage();
 
+		BasicProperties publishedProps = (BasicProperties) publishedMessage.get("props");
+		assertTrue(publishedProps instanceof AMQP.BasicProperties);
+		Map<String, Object> publishedHeaders = publishedProps.getHeaders();
+		assertEquals(publishedProps.getContentType(), "application/json");
+		assertEquals(publishedHeaders.get("__TypeId__"), headers.get("__TypeId__"));
+		assertEquals(publishedHeaders.get("ACTION"), headers.get("ACTION"));
+		assertEquals(publishedHeaders.get("PID"), headers.get("PID"));
+		assertEquals(publishedHeaders.get("messageSentFrom"), headers.get("messageSentFrom"));
 	}
 
+	@Test
+	public void testPublishTopic() throws Exception {
+		messageSender.sendMessage(null, "");
+		Map<String, Object> publishedMessage = getFirstPublishedMessage();
+		assertEquals(publishedMessage.get("routingKey"), routingInfo.routingKey);
+	}
+
+	@Test
+	public void testPublishExchangeName() throws Exception {
+		messageSender.sendMessage(null, "");
+		Map<String, Object> publishedMessage = getFirstPublishedMessage();
+		assertEquals(publishedMessage.get("exchange"), routingInfo.exchange);
+	}
+
+	@Test
+	public void testCloseConnection() throws Exception {
+		messageSender.sendMessage(null, "");
+		RabbitMqConnectionSpy firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
+		RabbitMqChannelSpy firstCreatedChannel = firstCreatedConnection.createdChannels.get(0);
+		assertEquals(firstCreatedChannel.closeHasBeenCalled, true);
+		assertEquals(firstCreatedConnection.closeHasBeenCalled, true);
+	}
 }

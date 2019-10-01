@@ -36,6 +36,7 @@ import com.rabbitmq.client.UnblockedCallback;
 public class RabbitMqConnectionSpy implements Connection {
 
 	List<RabbitMqChannelSpy> createdChannels = new ArrayList<RabbitMqChannelSpy>();
+	public boolean closeHasBeenCalled = false;
 
 	@Override
 	public void addShutdownListener(ShutdownListener listener) {
@@ -131,8 +132,7 @@ public class RabbitMqConnectionSpy implements Connection {
 
 	@Override
 	public void close() throws IOException {
-		// TODO Auto-generated method stub
-
+		closeHasBeenCalled = true;
 	}
 
 	@Override

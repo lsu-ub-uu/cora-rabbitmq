@@ -19,16 +19,16 @@
 
 package se.uu.ub.cora.rabbitmq;
 
-import se.uu.ub.cora.messaging.ChannelInfo;
+import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingFactory;
 
 public class RabbitMqMessagingFactory implements MessagingFactory {
 
 	@Override
-	public MessageSender factorTopicMessageSender(ChannelInfo channelInfo) {
+	public MessageSender factorTopicMessageSender(MessageRoutingInfo routingInfo) {
 		// TODO Auto-generated method stub
-		return new RabbitMqTopicSender();
+		return new RabbitMqTopicSender(null, null);
 	}
 
 }

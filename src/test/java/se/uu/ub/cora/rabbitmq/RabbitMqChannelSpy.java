@@ -38,6 +38,7 @@ import com.rabbitmq.client.ShutdownSignalException;
 public class RabbitMqChannelSpy implements Channel {
 
 	public List<Map<String, Object>> publishedMessages = new ArrayList<>();
+	public boolean closeHasBeenCalled = false;
 
 	@Override
 	public void addShutdownListener(ShutdownListener listener) {
@@ -83,8 +84,7 @@ public class RabbitMqChannelSpy implements Channel {
 
 	@Override
 	public void close() throws IOException, TimeoutException {
-		// TODO Auto-generated method stub
-
+		closeHasBeenCalled = true;
 	}
 
 	@Override
@@ -188,6 +188,9 @@ public class RabbitMqChannelSpy implements Channel {
 	public void basicPublish(String exchange, String routingKey, BasicProperties props, byte[] body)
 			throws IOException {
 		Map<String, Object> publishedMessage = new HashMap<>();
+		publishedMessage.put("exchange", exchange);
+		publishedMessage.put("routingKey", routingKey);
+		publishedMessage.put("props", props);
 		publishedMessage.put("body", body);
 		publishedMessages.add(publishedMessage);
 	}
