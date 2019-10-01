@@ -32,12 +32,22 @@ import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
 
+/**
+ * RabbitMqTopicSender is an implementation of {@link MessageSender} for RabbitMQ
+ *
+ */
+
 public class RabbitMqTopicSender implements MessageSender {
+
+	public static RabbitMqTopicSender usingConnectionFactoryAndMessageRoutingInfo(
+			ConnectionFactory rabbitFactory, MessageRoutingInfo routingInfo) {
+		return new RabbitMqTopicSender(rabbitFactory, routingInfo);
+	}
 
 	private ConnectionFactory rabbitFactory;
 	private MessageRoutingInfo routingInfo;
 
-	public RabbitMqTopicSender(ConnectionFactory rabbitFactory, MessageRoutingInfo routingInfo) {
+	private RabbitMqTopicSender(ConnectionFactory rabbitFactory, MessageRoutingInfo routingInfo) {
 		this.rabbitFactory = rabbitFactory;
 		this.routingInfo = routingInfo;
 		rabbitFactory.setHost(routingInfo.hostname);
@@ -45,6 +55,12 @@ public class RabbitMqTopicSender implements MessageSender {
 		rabbitFactory.setVirtualHost(routingInfo.virtualHost);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @param headers
+	 *            {@inheritDoc}. How objects are serialized is up to the implementation in RabbitMQ
+	 */
 	@Override
 	public void sendMessage(Map<String, Object> headers, String message) {
 		tryToSendMessage(headers, message);
@@ -74,6 +90,16 @@ public class RabbitMqTopicSender implements MessageSender {
 		builder.contentType("application/json");
 		builder.headers(headers);
 		return builder.build();
+	}
+
+	ConnectionFactory getConnectionFactory() {
+		// Needed for test
+		return rabbitFactory;
+	}
+
+	MessageRoutingInfo getMessageRoutingInfo() {
+		// needed for test
+		return routingInfo;
 	}
 
 }

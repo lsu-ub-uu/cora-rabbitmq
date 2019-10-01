@@ -19,10 +19,14 @@
 
 package se.uu.ub.cora.rabbitmq;
 
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
 import org.testng.annotations.Test;
 
+import com.rabbitmq.client.ConnectionFactory;
+
+import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessagingFactory;
 
 public class RabbitMqMessagingFactoryTest {
@@ -36,10 +40,21 @@ public class RabbitMqMessagingFactoryTest {
 
 	@Test
 	public void testFactorReturnsRabbitMqTopicSender() throws Exception {
-
+		String hostname = "messaging.alvin-portal.org";
+		String port = "5672";
+		String virtualHost = "alvin";
+		String exchange = "index";
+		String routingKey = "alvin.updates.#";
 		RabbitMqMessagingFactory factory = new RabbitMqMessagingFactory();
-		// MessageSender messageSender = factory.factorTopicMessageSender(null);
-		// assertTrue(messageSender instanceof RabbitMqTopicSender);
+		MessageRoutingInfo messageRoutingInfo = new MessageRoutingInfo(hostname, port, virtualHost,
+				exchange, routingKey);
+
+		RabbitMqTopicSender messageSender = (RabbitMqTopicSender) factory
+				.factorTopicMessageSender(messageRoutingInfo);
+
+		assertTrue(messageSender instanceof RabbitMqTopicSender);
+		assertTrue(messageSender.getConnectionFactory() instanceof ConnectionFactory);
+		assertEquals(messageSender.getMessageRoutingInfo(), messageRoutingInfo);
 
 	}
 }
