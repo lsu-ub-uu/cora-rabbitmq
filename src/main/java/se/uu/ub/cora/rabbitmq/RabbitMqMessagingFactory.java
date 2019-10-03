@@ -21,6 +21,7 @@ package se.uu.ub.cora.rabbitmq;
 
 import com.rabbitmq.client.ConnectionFactory;
 
+import se.uu.ub.cora.messaging.MessageListener;
 import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingFactory;
@@ -33,6 +34,13 @@ public class RabbitMqMessagingFactory implements MessagingFactory {
 
 	@Override
 	public MessageSender factorTopicMessageSender(MessageRoutingInfo routingInfo) {
-		return RabbitMqTopicSender.usingConnectionFactoryAndMessageRoutingInfo(new ConnectionFactory(), routingInfo);
+		return RabbitMqTopicSender
+				.usingConnectionFactoryAndMessageRoutingInfo(new ConnectionFactory(), routingInfo);
+	}
+
+	@Override
+	public MessageListener factorTopicMessageListener(MessageRoutingInfo messagingRoutingInfo) {
+		return RabbitMqTopicListener.usingConnectionFactoryAndMessageRoutingInfo(
+				new ConnectionFactory(), messagingRoutingInfo);
 	}
 }

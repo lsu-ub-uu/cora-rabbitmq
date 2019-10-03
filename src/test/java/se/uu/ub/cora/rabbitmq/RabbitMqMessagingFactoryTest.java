@@ -22,6 +22,7 @@ package se.uu.ub.cora.rabbitmq;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import com.rabbitmq.client.ConnectionFactory;
@@ -30,6 +31,14 @@ import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessagingFactory;
 
 public class RabbitMqMessagingFactoryTest {
+
+	MessageRoutingInfo routingInfo;
+
+	@BeforeTest
+	public void beforeTest() {
+		routingInfo = new MessageRoutingInfo("messaging.alvin-portal.org", "5672", "alvin", "index",
+				"alvin.updates.#");
+	}
 
 	@Test
 	public void testInit() throws Exception {
@@ -40,21 +49,25 @@ public class RabbitMqMessagingFactoryTest {
 
 	@Test
 	public void testFactorReturnsRabbitMqTopicSender() throws Exception {
-		String hostname = "messaging.alvin-portal.org";
-		String port = "5672";
-		String virtualHost = "alvin";
-		String exchange = "index";
-		String routingKey = "alvin.updates.#";
 		RabbitMqMessagingFactory factory = new RabbitMqMessagingFactory();
-		MessageRoutingInfo messageRoutingInfo = new MessageRoutingInfo(hostname, port, virtualHost,
-				exchange, routingKey);
 
 		RabbitMqTopicSender messageSender = (RabbitMqTopicSender) factory
-				.factorTopicMessageSender(messageRoutingInfo);
+				.factorTopicMessageSender(routingInfo);
 
 		assertTrue(messageSender instanceof RabbitMqTopicSender);
 		assertTrue(messageSender.getConnectionFactory() instanceof ConnectionFactory);
-		assertEquals(messageSender.getMessageRoutingInfo(), messageRoutingInfo);
+		assertEquals(messageSender.getMessageRoutingInfo(), routingInfo);
+	}
 
+	@Test
+	public void testFactorReturnsRabbitMqTopicListener() throws Exception {
+		RabbitMqMessagingFactory factory = new RabbitMqMessagingFactory();
+
+		RabbitMqTopicListener messageListener = (RabbitMqTopicListener) factory
+				.factorTopicMessageListener(routingInfo);
+
+		assertTrue(messageListener instanceof RabbitMqTopicListener);
+		assertTrue(messageListener.getConnectionFactory() instanceof ConnectionFactory);
+		assertEquals(messageListener.getMessageRoutingInfo(), routingInfo);
 	}
 }
