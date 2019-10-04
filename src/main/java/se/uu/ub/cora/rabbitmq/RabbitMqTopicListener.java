@@ -45,7 +45,7 @@ public class RabbitMqTopicListener implements MessageListener {
 
 		try {
 			connectionFactory.setHost(messagingRoutingInfo.hostname);
-			connectionFactory.setPort(Integer.valueOf(messagingRoutingInfo.port).intValue());
+			connectionFactory.setPort(Integer.parseInt(messagingRoutingInfo.port));
 			connectionFactory.setVirtualHost(messagingRoutingInfo.virtualHost);
 
 			Connection connection = connectionFactory.newConnection();
