@@ -39,6 +39,8 @@ public class RabbitMqChannelSpy implements Channel {
 
 	public List<Map<String, Object>> publishedMessages = new ArrayList<>();
 	public boolean closeHasBeenCalled = false;
+	public List<Map<String, Object>> queueBindings = new ArrayList<>();
+	public List<Map<String, Object>> basicConsumes = new ArrayList<>();
 
 	@Override
 	public void addShutdownListener(ShutdownListener listener) {
@@ -349,8 +351,8 @@ public class RabbitMqChannelSpy implements Channel {
 
 	@Override
 	public com.rabbitmq.client.AMQP.Queue.DeclareOk queueDeclare() throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		RabbitDeclareOkSpy declareOk = new RabbitDeclareOkSpy();
+		return declareOk;
 	}
 
 	@Override
@@ -398,14 +400,18 @@ public class RabbitMqChannelSpy implements Channel {
 	@Override
 	public com.rabbitmq.client.AMQP.Queue.BindOk queueBind(String queue, String exchange,
 			String routingKey) throws IOException {
-		// TODO Auto-generated method stub
+		Map<String, Object> binding = new HashMap<>();
+		binding.put("queue", queue);
+		binding.put("exchange", exchange);
+		binding.put("routingKey", routingKey);
+		queueBindings.add(binding);
 		return null;
 	}
 
 	@Override
 	public com.rabbitmq.client.AMQP.Queue.BindOk queueBind(String queue, String exchange,
 			String routingKey, Map<String, Object> arguments) throws IOException {
-		// TODO Auto-generated method stub
+
 		return null;
 	}
 
@@ -484,7 +490,6 @@ public class RabbitMqChannelSpy implements Channel {
 	public String basicConsume(String queue, DeliverCallback deliverCallback,
 			CancelCallback cancelCallback, ConsumerShutdownSignalCallback shutdownSignalCallback)
 			throws IOException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
@@ -498,7 +503,13 @@ public class RabbitMqChannelSpy implements Channel {
 	@Override
 	public String basicConsume(String queue, boolean autoAck, DeliverCallback deliverCallback,
 			CancelCallback cancelCallback) throws IOException {
-		// TODO Auto-generated method stub
+		Map<String, Object> basicConsume = new HashMap<>();
+		basicConsume.put("queue", queue);
+		basicConsume.put("autoAck", autoAck);
+		basicConsume.put("deliverCallback", deliverCallback);
+		basicConsume.put("cancelCallback", cancelCallback);
+
+		basicConsumes.add(basicConsume);
 		return null;
 	}
 

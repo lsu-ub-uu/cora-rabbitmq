@@ -1,13 +1,18 @@
 package se.uu.ub.cora.rabbitmq;
 
-import java.io.IOException;
-import java.util.concurrent.TimeoutException;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
+import com.rabbitmq.client.CancelCallback;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.DeliverCallback;
 
 import se.uu.ub.cora.messaging.MessageListener;
 import se.uu.ub.cora.messaging.MessageReceiver;
 import se.uu.ub.cora.messaging.MessageRoutingInfo;
+import se.uu.ub.cora.messaging.MessagingInitializationException;
 
 public class RabbitMqTopicListener implements MessageListener {
 
@@ -43,14 +48,26 @@ public class RabbitMqTopicListener implements MessageListener {
 			connectionFactory.setPort(Integer.valueOf(messagingRoutingInfo.port).intValue());
 			connectionFactory.setVirtualHost(messagingRoutingInfo.virtualHost);
 
-			connectionFactory.newConnection();
+			Connection connection = connectionFactory.newConnection();
+			Channel channel = connection.createChannel();
+			String queueName = channel.queueDeclare().getQueue();
 
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (TimeoutException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			channel.queueBind(queueName, messagingRoutingInfo.exchange,
+					messagingRoutingInfo.routingKey);
+
+			DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+				Map<String, Object> headers = null;
+				String message = new String(delivery.getBody(), StandardCharsets.UTF_8);
+				// String message = new String(delivery.getBody());
+				messageReceiver.receiveMessage(headers, message);
+			};
+			CancelCallback cancelCallback = consumerTag -> {
+			};
+
+			channel.basicConsume(queueName, true, deliverCallback, cancelCallback);
+
+		} catch (Exception e) {
+			throw new MessagingInitializationException(e.getMessage());
 		}
 	}
 
