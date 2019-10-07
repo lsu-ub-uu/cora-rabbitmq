@@ -26,9 +26,11 @@ import se.uu.ub.cora.messaging.MessageReceiver;
 
 public class MessageReceiverSpy implements MessageReceiver {
 	List<String> messages = new ArrayList<>();
+	List<Map<String, Object>> headers = new ArrayList<>();
 
 	@Override
 	public void receiveMessage(Map<String, Object> headers, String message) {
 		messages.add(message);
+		this.headers.add(headers);
 	}
 }

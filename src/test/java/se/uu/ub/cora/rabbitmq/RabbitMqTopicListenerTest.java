@@ -5,6 +5,8 @@ import static org.testng.Assert.assertSame;
 import static org.testng.Assert.assertTrue;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -12,6 +14,7 @@ import org.testng.annotations.Test;
 import com.rabbitmq.client.CancelCallback;
 import com.rabbitmq.client.DeliverCallback;
 import com.rabbitmq.client.Delivery;
+import com.rabbitmq.client.Envelope;
 
 import se.uu.ub.cora.messaging.MessageListener;
 import se.uu.ub.cora.messaging.MessageRoutingInfo;
@@ -73,15 +76,17 @@ public class RabbitMqTopicListenerTest {
 	@Test
 	public void testListenMessageCreatesChannel() throws Exception {
 		listener.listen(null);
-		firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
+		firstCreatedConnection = getCreatedRabbitConnection(0);
 		assertEquals(firstCreatedConnection.createdChannels.size(), 1);
 	}
 
 	@Test
 	public void testBindingQueue() throws Exception {
+		RabbitMqChannelSpy channelSpy = null;
+
 		listener.listen(null);
-		firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
-		RabbitMqChannelSpy channelSpy = firstCreatedConnection.createdChannels.get(0);
+		firstCreatedConnection = getCreatedRabbitConnection(0);
+		channelSpy = getRabbitChannel(0);
 
 		assertEquals(channelSpy.queueBindings.size(), 1);
 		assertEquals(channelSpy.queueBindings.get(0).get("queue"), "channelBinding");
@@ -91,9 +96,11 @@ public class RabbitMqTopicListenerTest {
 
 	@Test
 	public void testBasicConsumeHasCorrectVAlues() throws Exception {
+		RabbitMqChannelSpy channelSpy = null;
+
 		listener.listen(null);
-		firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
-		RabbitMqChannelSpy channelSpy = firstCreatedConnection.createdChannels.get(0);
+		firstCreatedConnection = getCreatedRabbitConnection(0);
+		channelSpy = getRabbitChannel(0);
 
 		assertEquals(channelSpy.basicConsumes.size(), 1);
 		assertEquals(channelSpy.basicConsumes.get(0).get("queue"), "channelBinding");
@@ -106,13 +113,44 @@ public class RabbitMqTopicListenerTest {
 	@Test
 	public void testCallBacksAreHandledAndSentOnToReceiver() throws Exception {
 		MessageReceiverSpy messageReceiverSpy = new MessageReceiverSpy();
+		RabbitMqChannelSpy channelSpy = null;
+		Delivery delivery = null;
+		BasicPropertiesSpy properties = new BasicPropertiesSpy();
+		Envelope envelope = null;
+		Map<String, Object> headers = new HashMap<>();
+		Map<String, Object> headersReceived = new HashMap<>();
+
+		headers.put("__TypeId__", "epc.messaging.amqp.EPCFedoraMessage");
+		headers.put("ACTION", "UPDATE");
+		headers.put("PID", "alvin-place:1");
+		headers.put("messageSentFrom", "Cora");
+		properties.setHeaders(headers);
+		delivery = new Delivery(envelope, properties, "Łódź".getBytes(StandardCharsets.UTF_8));
+
 		listener.listen(messageReceiverSpy);
-		firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
-		RabbitMqChannelSpy channelSpy = firstCreatedConnection.createdChannels.get(0);
+
+		firstCreatedConnection = getCreatedRabbitConnection(0);
+		channelSpy = getRabbitChannel(0);
 		DeliverCallback deliverCallback = (DeliverCallback) channelSpy.basicConsumes.get(0)
 				.get("deliverCallback");
-		Delivery delivery = new Delivery(null, null, "Łódź".getBytes(StandardCharsets.UTF_8));
 		deliverCallback.handle("consumerTag", delivery);
+
 		assertEquals(messageReceiverSpy.messages.get(0), "Łódź");
+		assertEquals(messageReceiverSpy.headers.size(), 1);
+
+		headersReceived = messageReceiverSpy.headers.get(0);
+
+		assertEquals(headersReceived.get("__TypeId__"), "epc.messaging.amqp.EPCFedoraMessage");
+		assertEquals(headersReceived.get("ACTION"), "UPDATE");
+		assertEquals(headersReceived.get("PID"), "alvin-place:1");
+		assertEquals(headersReceived.get("messageSentFrom"), "Cora");
+	}
+
+	private RabbitMqConnectionSpy getCreatedRabbitConnection(int position) {
+		return rabbitFactorySpy.createdConnections.get(position);
+	}
+
+	private RabbitMqChannelSpy getRabbitChannel(int position) {
+		return firstCreatedConnection.createdChannels.get(position);
 	}
 }
