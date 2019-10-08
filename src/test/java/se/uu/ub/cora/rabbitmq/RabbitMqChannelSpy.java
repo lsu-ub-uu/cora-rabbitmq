@@ -528,6 +528,7 @@ public class RabbitMqChannelSpy implements Channel {
 		basicConsume.put("cancelCallback", cancelCallback);
 
 		basicConsumes.add(basicConsume);
+
 		return null;
 	}
 

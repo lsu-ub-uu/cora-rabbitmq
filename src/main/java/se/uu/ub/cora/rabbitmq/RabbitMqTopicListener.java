@@ -22,7 +22,6 @@ package se.uu.ub.cora.rabbitmq;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.concurrent.TimeoutException;
 
 import com.rabbitmq.client.CancelCallback;
 import com.rabbitmq.client.Channel;
@@ -51,6 +50,61 @@ public class RabbitMqTopicListener implements MessageListener {
 		this.messagingRoutingInfo = messagingRoutingInfo;
 	}
 
+	@Override
+	public void listen(MessageReceiver messageReceiver) {
+		tryTolisten(messageReceiver);
+	}
+
+	private void tryTolisten(MessageReceiver messageReceiver) {
+		try (Connection connection = connectionFactory.newConnection();
+				Channel channel = connection.createChannel()) {
+			listenMessages(messageReceiver, channel);
+		} catch (Exception e) {
+			throw new MessagingInitializationException(e.getMessage());
+		}
+	}
+
+	private void listenMessages(MessageReceiver messageReceiver, Channel channel)
+			throws IOException {
+		setupConnectionFactory();
+		startListening(messageReceiver, channel);
+	}
+
+	private void startListening(MessageReceiver messageReceiver, Channel channel)
+			throws IOException {
+		String queueName = bindQueue(channel);
+		boolean autoAck = true;
+		DeliverCallback deliverCallback = getDeliverCallback(messageReceiver);
+		CancelCallback cancelCallback = getCancelCallback(messageReceiver);
+
+		channel.basicConsume(queueName, autoAck, deliverCallback, cancelCallback);
+	}
+
+	private void setupConnectionFactory() {
+		connectionFactory.setHost(messagingRoutingInfo.hostname);
+		connectionFactory.setPort(Integer.parseInt(messagingRoutingInfo.port));
+		connectionFactory.setVirtualHost(messagingRoutingInfo.virtualHost);
+	}
+
+	private String bindQueue(Channel channel) throws IOException {
+		String queueName = channel.queueDeclare().getQueue();
+		channel.queueBind(queueName, messagingRoutingInfo.exchange,
+				messagingRoutingInfo.routingKey);
+		return queueName;
+	}
+
+	private DeliverCallback getDeliverCallback(MessageReceiver messageReceiver) {
+		return (consumerTag, delivery) -> {
+			Map<String, Object> headers = delivery.getProperties().getHeaders();
+			String message = new String(delivery.getBody(), StandardCharsets.UTF_8);
+			messageReceiver.receiveMessage(headers, message);
+		};
+	}
+
+	private CancelCallback getCancelCallback(MessageReceiver messageReceiver) {
+		return consumerTag -> messageReceiver.topicClosed();
+	}
+
 	ConnectionFactory getConnectionFactory() {
 		// needed for test
 		return connectionFactory;
@@ -60,43 +114,4 @@ public class RabbitMqTopicListener implements MessageListener {
 		// needed for test
 		return messagingRoutingInfo;
 	}
-
-	@Override
-	public void listen(MessageReceiver messageReceiver) {
-		tryTolisten(messageReceiver);
-	}
-
-	private void tryTolisten(MessageReceiver messageReceiver) {
-		try {
-			listenMessages(messageReceiver);
-
-		} catch (Exception e) {
-			throw new MessagingInitializationException(e.getMessage());
-		}
-	}
-
-	private void listenMessages(MessageReceiver messageReceiver)
-			throws IOException, TimeoutException {
-		connectionFactory.setHost(messagingRoutingInfo.hostname);
-		connectionFactory.setPort(Integer.parseInt(messagingRoutingInfo.port));
-		connectionFactory.setVirtualHost(messagingRoutingInfo.virtualHost);
-
-		Connection connection = connectionFactory.newConnection();
-		Channel channel = connection.createChannel();
-		String queueName = channel.queueDeclare().getQueue();
-
-		channel.queueBind(queueName, messagingRoutingInfo.exchange,
-				messagingRoutingInfo.routingKey);
-
-		DeliverCallback deliverCallback = (consumerTag, delivery) -> {
-			Map<String, Object> headers = delivery.getProperties().getHeaders();
-			String message = new String(delivery.getBody(), StandardCharsets.UTF_8);
-			messageReceiver.receiveMessage(headers, message);
-		};
-		CancelCallback cancelCallback = consumerTag -> {
-		};
-
-		channel.basicConsume(queueName, true, deliverCallback, cancelCallback);
-	}
-
 }

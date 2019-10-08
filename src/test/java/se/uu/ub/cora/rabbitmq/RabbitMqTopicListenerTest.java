@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -25,7 +26,6 @@ public class RabbitMqTopicListenerTest {
 	private MessageRoutingInfo routingInfo;
 	private RabbitMqConnectionFactorySpy rabbitFactorySpy;
 	private RabbitMqTopicListener listener;
-	private RabbitMqConnectionSpy firstCreatedConnection;
 
 	@BeforeMethod
 	public void beforeMethod() {
@@ -34,13 +34,20 @@ public class RabbitMqTopicListenerTest {
 				"alvin.updates.#");
 		listener = RabbitMqTopicListener
 				.usingConnectionFactoryAndMessageRoutingInfo(rabbitFactorySpy, routingInfo);
-		firstCreatedConnection = null;
+	}
+
+	@AfterMethod
+	public void afterMethod() {
+		rabbitFactorySpy = null;
+		routingInfo = null;
+		listener = null;
 	}
 
 	@Test
 	public void testInit() throws Exception {
 		assertSame(listener.getConnectionFactory(), rabbitFactorySpy);
 		assertSame(listener.getMessageRoutingInfo(), routingInfo);
+
 	}
 
 	@Test
@@ -76,7 +83,7 @@ public class RabbitMqTopicListenerTest {
 	@Test
 	public void testListenMessageCreatesChannel() throws Exception {
 		listener.listen(null);
-		firstCreatedConnection = getCreatedRabbitConnection(0);
+		RabbitMqConnectionSpy firstCreatedConnection = getCreatedRabbitConnection(0);
 		assertEquals(firstCreatedConnection.createdChannels.size(), 1);
 	}
 
@@ -85,8 +92,8 @@ public class RabbitMqTopicListenerTest {
 		RabbitMqChannelSpy channelSpy = null;
 
 		listener.listen(null);
-		firstCreatedConnection = getCreatedRabbitConnection(0);
-		channelSpy = getRabbitChannel(0);
+		RabbitMqConnectionSpy firstCreatedConnection = getCreatedRabbitConnection(0);
+		channelSpy = getRabbitChannel(0, firstCreatedConnection);
 
 		assertEquals(channelSpy.queueBindings.size(), 1);
 		assertEquals(channelSpy.queueBindings.get(0).get("queue"), "channelBinding");
@@ -99,8 +106,8 @@ public class RabbitMqTopicListenerTest {
 		RabbitMqChannelSpy channelSpy = null;
 
 		listener.listen(null);
-		firstCreatedConnection = getCreatedRabbitConnection(0);
-		channelSpy = getRabbitChannel(0);
+		RabbitMqConnectionSpy firstCreatedConnection = getCreatedRabbitConnection(0);
+		channelSpy = getRabbitChannel(0, firstCreatedConnection);
 
 		assertEquals(channelSpy.basicConsumes.size(), 1);
 		assertEquals(channelSpy.basicConsumes.get(0).get("queue"), "channelBinding");
@@ -129,8 +136,8 @@ public class RabbitMqTopicListenerTest {
 
 		listener.listen(messageReceiverSpy);
 
-		firstCreatedConnection = getCreatedRabbitConnection(0);
-		channelSpy = getRabbitChannel(0);
+		RabbitMqConnectionSpy firstCreatedConnection = getCreatedRabbitConnection(0);
+		channelSpy = getRabbitChannel(0, firstCreatedConnection);
 		DeliverCallback deliverCallback = (DeliverCallback) channelSpy.basicConsumes.get(0)
 				.get("deliverCallback");
 		deliverCallback.handle("consumerTag", delivery);
@@ -146,11 +153,29 @@ public class RabbitMqTopicListenerTest {
 		assertEquals(headersReceived.get("messageSentFrom"), "Cora");
 	}
 
+	@Test
+	public void testCallbackCancel() throws Exception {
+		MessageReceiverSpy messageReceiverSpy = new MessageReceiverSpy();
+		RabbitMqChannelSpy channelSpy = null;
+
+		listener.listen(messageReceiverSpy);
+
+		RabbitMqConnectionSpy firstCreatedConnection = getCreatedRabbitConnection(0);
+		channelSpy = getRabbitChannel(0, firstCreatedConnection);
+
+		CancelCallback cancelCallback = (CancelCallback) channelSpy.basicConsumes.get(0)
+				.get("cancelCallback");
+		cancelCallback.handle("consumerTag");
+
+		assertTrue(messageReceiverSpy.topicClosedHasBeenCalled);
+	}
+
 	private RabbitMqConnectionSpy getCreatedRabbitConnection(int position) {
 		return rabbitFactorySpy.createdConnections.get(position);
 	}
 
-	private RabbitMqChannelSpy getRabbitChannel(int position) {
+	private RabbitMqChannelSpy getRabbitChannel(int position,
+			RabbitMqConnectionSpy firstCreatedConnection) {
 		return firstCreatedConnection.createdChannels.get(position);
 	}
 }
