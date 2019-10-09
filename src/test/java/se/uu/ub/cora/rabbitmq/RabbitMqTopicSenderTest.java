@@ -31,21 +31,24 @@ import org.testng.annotations.Test;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.BasicProperties;
 
-import se.uu.ub.cora.messaging.MessageRoutingInfo;
+import se.uu.ub.cora.messaging.AmqpMessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
+import se.uu.ub.cora.rabbitmq.spy.RabbitMqChannelSpy;
+import se.uu.ub.cora.rabbitmq.spy.RabbitMqConnectionFactorySpy;
+import se.uu.ub.cora.rabbitmq.spy.RabbitMqConnectionSpy;
 
 public class RabbitMqTopicSenderTest {
 
 	private RabbitMqConnectionFactorySpy rabbitFactorySpy;
-	private MessageRoutingInfo routingInfo;
+	private AmqpMessageRoutingInfo routingInfo;
 	private RabbitMqTopicSender messageSender;
 
 	@BeforeMethod
 	public void beforeMethod() {
 		rabbitFactorySpy = new RabbitMqConnectionFactorySpy();
-		routingInfo = new MessageRoutingInfo("messaging.alvin-portal.org", "5672", "alvin", "index",
-				"alvin.updates.#");
+		routingInfo = new AmqpMessageRoutingInfo("messaging.alvin-portal.org", "5672",
+				"alvin.updates.#", "alvin", "index");
 		messageSender = RabbitMqTopicSender
 				.usingConnectionFactoryAndMessageRoutingInfo(rabbitFactorySpy, routingInfo);
 	}

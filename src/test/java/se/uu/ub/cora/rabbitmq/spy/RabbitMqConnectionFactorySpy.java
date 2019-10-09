@@ -17,7 +17,7 @@
  *     along with Cora.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package se.uu.ub.cora.rabbitmq;
+package se.uu.ub.cora.rabbitmq.spy;
 
 import java.io.IOException;
 import java.util.ArrayList;

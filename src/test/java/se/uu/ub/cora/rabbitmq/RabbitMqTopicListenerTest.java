@@ -17,21 +17,26 @@ import com.rabbitmq.client.DeliverCallback;
 import com.rabbitmq.client.Delivery;
 import com.rabbitmq.client.Envelope;
 
+import se.uu.ub.cora.messaging.AmqpMessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageListener;
-import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
+import se.uu.ub.cora.rabbitmq.spy.BasicPropertiesSpy;
+import se.uu.ub.cora.rabbitmq.spy.MessageReceiverSpy;
+import se.uu.ub.cora.rabbitmq.spy.RabbitMqChannelSpy;
+import se.uu.ub.cora.rabbitmq.spy.RabbitMqConnectionFactorySpy;
+import se.uu.ub.cora.rabbitmq.spy.RabbitMqConnectionSpy;
 
 public class RabbitMqTopicListenerTest {
 
-	private MessageRoutingInfo routingInfo;
+	private AmqpMessageRoutingInfo routingInfo;
 	private RabbitMqConnectionFactorySpy rabbitFactorySpy;
 	private RabbitMqTopicListener listener;
 
 	@BeforeMethod
 	public void beforeMethod() {
 		rabbitFactorySpy = new RabbitMqConnectionFactorySpy();
-		routingInfo = new MessageRoutingInfo("messaging.alvin-portal.org", "5672", "alvin", "index",
-				"alvin.updates.#");
+		routingInfo = new AmqpMessageRoutingInfo("messaging.alvin-portal.org", "5672",
+				"alvin.updates.#", "alvin", "index");
 		listener = RabbitMqTopicListener
 				.usingConnectionFactoryAndMessageRoutingInfo(rabbitFactorySpy, routingInfo);
 	}

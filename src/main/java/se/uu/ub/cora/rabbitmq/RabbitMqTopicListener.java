@@ -29,6 +29,7 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
 
+import se.uu.ub.cora.messaging.AmqpMessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageListener;
 import se.uu.ub.cora.messaging.MessageReceiver;
 import se.uu.ub.cora.messaging.MessageRoutingInfo;
@@ -37,15 +38,16 @@ import se.uu.ub.cora.messaging.MessagingInitializationException;
 public class RabbitMqTopicListener implements MessageListener {
 
 	private ConnectionFactory connectionFactory;
-	private MessageRoutingInfo messagingRoutingInfo;
+	private AmqpMessageRoutingInfo messagingRoutingInfo;
 
 	public static RabbitMqTopicListener usingConnectionFactoryAndMessageRoutingInfo(
 			ConnectionFactory connectionFactory, MessageRoutingInfo messagingRoutingInfo) {
-		return new RabbitMqTopicListener(connectionFactory, messagingRoutingInfo);
+		return new RabbitMqTopicListener(connectionFactory,
+				(AmqpMessageRoutingInfo) messagingRoutingInfo);
 	}
 
 	private RabbitMqTopicListener(ConnectionFactory connectionFactory,
-			MessageRoutingInfo messagingRoutingInfo) {
+			AmqpMessageRoutingInfo messagingRoutingInfo) {
 		this.connectionFactory = connectionFactory;
 		this.messagingRoutingInfo = messagingRoutingInfo;
 	}

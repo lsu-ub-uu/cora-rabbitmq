@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with Cora.  If not, see <http://www.gnu.org/licenses/>.
  */
-package se.uu.ub.cora.rabbitmq;
+package se.uu.ub.cora.rabbitmq.spy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +25,8 @@ import java.util.Map;
 import se.uu.ub.cora.messaging.MessageReceiver;
 
 public class MessageReceiverSpy implements MessageReceiver {
-	List<String> messages = new ArrayList<>();
-	List<Map<String, Object>> headers = new ArrayList<>();
+	public List<String> messages = new ArrayList<>();
+	public List<Map<String, Object>> headers = new ArrayList<>();
 	public boolean topicClosedHasBeenCalled = false;
 
 	@Override

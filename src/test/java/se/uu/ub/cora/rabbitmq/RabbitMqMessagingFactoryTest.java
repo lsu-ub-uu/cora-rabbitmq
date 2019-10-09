@@ -27,17 +27,17 @@ import org.testng.annotations.Test;
 
 import com.rabbitmq.client.ConnectionFactory;
 
-import se.uu.ub.cora.messaging.MessageRoutingInfo;
+import se.uu.ub.cora.messaging.AmqpMessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessagingFactory;
 
 public class RabbitMqMessagingFactoryTest {
 
-	MessageRoutingInfo routingInfo;
+	AmqpMessageRoutingInfo routingInfo;
 
 	@BeforeTest
 	public void beforeTest() {
-		routingInfo = new MessageRoutingInfo("messaging.alvin-portal.org", "5672", "alvin", "index",
-				"alvin.updates.#");
+		routingInfo = new AmqpMessageRoutingInfo("messaging.alvin-portal.org", "5672",
+				"alvin.updates.#", "alvin", "index");
 	}
 
 	@Test
