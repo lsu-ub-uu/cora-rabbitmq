@@ -58,6 +58,7 @@ public class RabbitMqTopicListener implements MessageListener {
 	}
 
 	private void tryTolisten(MessageReceiver messageReceiver) {
+		setupConnectionFactory();
 		try (Connection connection = connectionFactory.newConnection();
 				Channel channel = connection.createChannel()) {
 			listenMessages(messageReceiver, channel);
@@ -68,7 +69,6 @@ public class RabbitMqTopicListener implements MessageListener {
 
 	private void listenMessages(MessageReceiver messageReceiver, Channel channel)
 			throws IOException {
-		setupConnectionFactory();
 		startListening(messageReceiver, channel);
 	}
 

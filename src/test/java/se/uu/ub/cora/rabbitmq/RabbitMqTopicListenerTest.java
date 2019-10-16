@@ -35,8 +35,8 @@ public class RabbitMqTopicListenerTest {
 	@BeforeMethod
 	public void beforeMethod() {
 		rabbitFactorySpy = new RabbitMqConnectionFactorySpy();
-		routingInfo = new AmqpMessageRoutingInfo("messaging.alvin-portal.org", "5672",
-				"alvin.updates.#", "alvin", "index");
+		routingInfo = new AmqpMessageRoutingInfo("messaging.alvin-portal.org", "5672", "alvin",
+				"index", "alvin.updates.#");
 		listener = RabbitMqTopicListener
 				.usingConnectionFactoryAndMessageRoutingInfo(rabbitFactorySpy, routingInfo);
 	}
@@ -69,6 +69,17 @@ public class RabbitMqTopicListenerTest {
 		assertEquals(rabbitFactorySpy.host, routingInfo.hostname);
 		assertEquals(rabbitFactorySpy.port, portAsInt);
 		assertEquals(rabbitFactorySpy.virtualHost, routingInfo.virtualHost);
+	}
+
+	@Test
+	public void testConnectionsParametersAreSetBeforeNewConnectionIsCalled() throws Exception {
+		int portAsInt = Integer.valueOf(routingInfo.port).intValue();
+		listener.listen(null);
+
+		RabbitMqConnectionSpy rabbitMqConnectionSpy = rabbitFactorySpy.createdConnections.get(0);
+		assertEquals(rabbitMqConnectionSpy.host, routingInfo.hostname);
+		assertEquals(rabbitMqConnectionSpy.port, portAsInt);
+		assertEquals(rabbitMqConnectionSpy.virtualHost, routingInfo.virtualHost);
 	}
 
 	@Test

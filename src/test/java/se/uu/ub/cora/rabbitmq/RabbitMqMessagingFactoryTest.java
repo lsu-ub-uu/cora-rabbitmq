@@ -37,7 +37,7 @@ public class RabbitMqMessagingFactoryTest {
 	@BeforeTest
 	public void beforeTest() {
 		routingInfo = new AmqpMessageRoutingInfo("messaging.alvin-portal.org", "5672",
-				"alvin.updates.#", "alvin", "index");
+				"alvin", "index", "alvin.updates.#");
 	}
 
 	@Test

@@ -37,6 +37,9 @@ public class RabbitMqConnectionSpy implements Connection {
 
 	public List<RabbitMqChannelSpy> createdChannels = new ArrayList<RabbitMqChannelSpy>();
 	public boolean closeHasBeenCalled = false;
+	public String host;
+	public int port;
+	public String virtualHost;
 
 	@Override
 	public void addShutdownListener(ShutdownListener listener) {

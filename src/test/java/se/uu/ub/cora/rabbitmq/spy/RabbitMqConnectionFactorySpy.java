@@ -56,6 +56,10 @@ public class RabbitMqConnectionFactorySpy extends ConnectionFactory {
 			throw new RuntimeException("Error from RabbitMqConnectionFactorySpy on newConnection");
 		}
 		RabbitMqConnectionSpy rabbitMqConnectionSpy = new RabbitMqConnectionSpy();
+		rabbitMqConnectionSpy.host = host;
+		rabbitMqConnectionSpy.port = port;
+		rabbitMqConnectionSpy.virtualHost = virtualHost;
+
 		createdConnections.add(rabbitMqConnectionSpy);
 		return rabbitMqConnectionSpy;
 	}

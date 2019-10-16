@@ -48,7 +48,7 @@ public class RabbitMqTopicSenderTest {
 	public void beforeMethod() {
 		rabbitFactorySpy = new RabbitMqConnectionFactorySpy();
 		routingInfo = new AmqpMessageRoutingInfo("messaging.alvin-portal.org", "5672",
-				"alvin.updates.#", "alvin", "index");
+				"alvin", "index", "alvin.updates.#");
 		messageSender = RabbitMqTopicSender
 				.usingConnectionFactoryAndMessageRoutingInfo(rabbitFactorySpy, routingInfo);
 	}
