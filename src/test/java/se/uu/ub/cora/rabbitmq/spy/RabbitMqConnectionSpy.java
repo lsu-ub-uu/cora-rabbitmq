@@ -40,6 +40,7 @@ public class RabbitMqConnectionSpy implements Connection {
 	public String host;
 	public int port;
 	public String virtualHost;
+	public boolean throwErrorOnCloseConnection = false;
 
 	@Override
 	public void addShutdownListener(ShutdownListener listener) {
@@ -136,6 +137,9 @@ public class RabbitMqConnectionSpy implements Connection {
 	@Override
 	public void close() throws IOException {
 		closeHasBeenCalled = true;
+		if (throwErrorOnCloseConnection) {
+			throw new RuntimeException("Error from RabbitMqConnectionSpy on close");
+		}
 	}
 
 	@Override

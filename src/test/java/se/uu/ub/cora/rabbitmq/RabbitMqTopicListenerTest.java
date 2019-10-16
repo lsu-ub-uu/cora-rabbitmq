@@ -16,6 +16,8 @@ import com.rabbitmq.client.CancelCallback;
 import com.rabbitmq.client.DeliverCallback;
 import com.rabbitmq.client.Delivery;
 import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.LongString;
+import com.rabbitmq.client.impl.LongStringHelper;
 
 import se.uu.ub.cora.messaging.AmqpMessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageListener;
@@ -29,28 +31,28 @@ import se.uu.ub.cora.rabbitmq.spy.RabbitMqConnectionSpy;
 public class RabbitMqTopicListenerTest {
 
 	private AmqpMessageRoutingInfo routingInfo;
-	private RabbitMqConnectionFactorySpy rabbitFactorySpy;
+	private RabbitMqConnectionFactorySpy rabbitConnectionFactorySpy;
 	private RabbitMqTopicListener listener;
 
 	@BeforeMethod
 	public void beforeMethod() {
-		rabbitFactorySpy = new RabbitMqConnectionFactorySpy();
+		rabbitConnectionFactorySpy = new RabbitMqConnectionFactorySpy();
 		routingInfo = new AmqpMessageRoutingInfo("messaging.alvin-portal.org", "5672", "alvin",
 				"index", "alvin.updates.#");
-		listener = RabbitMqTopicListener
-				.usingConnectionFactoryAndMessageRoutingInfo(rabbitFactorySpy, routingInfo);
+		listener = RabbitMqTopicListener.usingConnectionFactoryAndMessageRoutingInfo(
+				rabbitConnectionFactorySpy, routingInfo);
 	}
 
 	@AfterMethod
 	public void afterMethod() {
-		rabbitFactorySpy = null;
+		rabbitConnectionFactorySpy = null;
 		routingInfo = null;
 		listener = null;
 	}
 
 	@Test
 	public void testInit() throws Exception {
-		assertSame(listener.getConnectionFactory(), rabbitFactorySpy);
+		assertSame(listener.getConnectionFactory(), rabbitConnectionFactorySpy);
 		assertSame(listener.getMessageRoutingInfo(), routingInfo);
 
 	}
@@ -66,9 +68,9 @@ public class RabbitMqTopicListenerTest {
 
 		listener.listen(null);
 
-		assertEquals(rabbitFactorySpy.host, routingInfo.hostname);
-		assertEquals(rabbitFactorySpy.port, portAsInt);
-		assertEquals(rabbitFactorySpy.virtualHost, routingInfo.virtualHost);
+		assertEquals(rabbitConnectionFactorySpy.host, routingInfo.hostname);
+		assertEquals(rabbitConnectionFactorySpy.port, portAsInt);
+		assertEquals(rabbitConnectionFactorySpy.virtualHost, routingInfo.virtualHost);
 	}
 
 	@Test
@@ -76,7 +78,8 @@ public class RabbitMqTopicListenerTest {
 		int portAsInt = Integer.valueOf(routingInfo.port).intValue();
 		listener.listen(null);
 
-		RabbitMqConnectionSpy rabbitMqConnectionSpy = rabbitFactorySpy.createdConnections.get(0);
+		RabbitMqConnectionSpy rabbitMqConnectionSpy = rabbitConnectionFactorySpy.createdConnections
+				.get(0);
 		assertEquals(rabbitMqConnectionSpy.host, routingInfo.hostname);
 		assertEquals(rabbitMqConnectionSpy.port, portAsInt);
 		assertEquals(rabbitMqConnectionSpy.virtualHost, routingInfo.virtualHost);
@@ -84,15 +87,15 @@ public class RabbitMqTopicListenerTest {
 
 	@Test
 	public void testListenerCreatesAConnection() throws Exception {
-		assertEquals(rabbitFactorySpy.createdConnections.size(), 0);
+		assertEquals(rabbitConnectionFactorySpy.createdConnections.size(), 0);
 		listener.listen(null);
-		assertEquals(rabbitFactorySpy.createdConnections.size(), 1);
+		assertEquals(rabbitConnectionFactorySpy.createdConnections.size(), 1);
 	}
 
 	@Test(expectedExceptions = MessagingInitializationException.class, expectedExceptionsMessageRegExp = ""
 			+ "Error from RabbitMqConnectionFactorySpy on newConnection")
 	public void testExceptionHandlingOnSendMessage() throws Exception {
-		rabbitFactorySpy.throwErrorOnSendMessage = true;
+		rabbitConnectionFactorySpy.throwErrorOnSendMessage = true;
 		listener.listen(null);
 	}
 
@@ -141,12 +144,15 @@ public class RabbitMqTopicListenerTest {
 		BasicPropertiesSpy properties = new BasicPropertiesSpy();
 		Envelope envelope = null;
 		Map<String, Object> headers = new HashMap<>();
-		Map<String, Object> headersReceived = new HashMap<>();
+		Map<String, String> headersReceived = new HashMap<>();
 
 		headers.put("__TypeId__", "epc.messaging.amqp.EPCFedoraMessage");
 		headers.put("ACTION", "UPDATE");
 		headers.put("PID", "alvin-place:1");
 		headers.put("messageSentFrom", "Cora");
+		LongString longString = LongStringHelper.asLongString("notAStringValue");
+		headers.put("notAString", longString);
+
 		properties.setHeaders(headers);
 		delivery = new Delivery(envelope, properties, "Łódź".getBytes(StandardCharsets.UTF_8));
 
@@ -184,10 +190,33 @@ public class RabbitMqTopicListenerTest {
 		cancelCallback.handle("consumerTag");
 
 		assertTrue(messageReceiverSpy.topicClosedHasBeenCalled);
+		RabbitMqConnectionSpy rabbitMqConnectionSpy = rabbitConnectionFactorySpy.createdConnections
+				.get(0);
+		RabbitMqChannelSpy rabbitMqChannelSpy = rabbitMqConnectionSpy.createdChannels.get(0);
+		assertTrue(rabbitMqChannelSpy.closeHasBeenCalled);
+		assertTrue(rabbitMqConnectionSpy.closeHasBeenCalled);
+	}
+
+	@Test(expectedExceptions = RuntimeException.class, expectedExceptionsMessageRegExp = ""
+			+ "Error from RabbitMqConnectionSpy on close")
+	public void testCallbackCancelErrorClosing() throws Exception {
+		rabbitConnectionFactorySpy.throwErrorOnCloseConnection = true;
+		MessageReceiverSpy messageReceiverSpy = new MessageReceiverSpy();
+		RabbitMqChannelSpy channelSpy = null;
+
+		listener.listen(messageReceiverSpy);
+
+		RabbitMqConnectionSpy firstCreatedConnection = getCreatedRabbitConnection(0);
+		channelSpy = getRabbitChannel(0, firstCreatedConnection);
+
+		CancelCallback cancelCallback = (CancelCallback) channelSpy.basicConsumes.get(0)
+				.get("cancelCallback");
+
+		cancelCallback.handle("consumerTag");
 	}
 
 	private RabbitMqConnectionSpy getCreatedRabbitConnection(int position) {
-		return rabbitFactorySpy.createdConnections.get(position);
+		return rabbitConnectionFactorySpy.createdConnections.get(position);
 	}
 
 	private RabbitMqChannelSpy getRabbitChannel(int position,

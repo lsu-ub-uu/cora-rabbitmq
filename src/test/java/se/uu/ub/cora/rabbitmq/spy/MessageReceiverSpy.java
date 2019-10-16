@@ -26,11 +26,11 @@ import se.uu.ub.cora.messaging.MessageReceiver;
 
 public class MessageReceiverSpy implements MessageReceiver {
 	public List<String> messages = new ArrayList<>();
-	public List<Map<String, Object>> headers = new ArrayList<>();
+	public List<Map<String, String>> headers = new ArrayList<>();
 	public boolean topicClosedHasBeenCalled = false;
 
 	@Override
-	public void receiveMessage(Map<String, Object> headers, String message) {
+	public void receiveMessage(Map<String, String> headers, String message) {
 		messages.add(message);
 		this.headers.add(headers);
 	}

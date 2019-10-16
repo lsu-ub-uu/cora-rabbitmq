@@ -34,6 +34,7 @@ public class RabbitMqConnectionFactorySpy extends ConnectionFactory {
 	public String virtualHost;
 	public List<RabbitMqConnectionSpy> createdConnections = new ArrayList<>();
 	public boolean throwErrorOnSendMessage = false;
+	public boolean throwErrorOnCloseConnection = false;
 
 	@Override
 	public void setHost(String host) {
@@ -56,6 +57,7 @@ public class RabbitMqConnectionFactorySpy extends ConnectionFactory {
 			throw new RuntimeException("Error from RabbitMqConnectionFactorySpy on newConnection");
 		}
 		RabbitMqConnectionSpy rabbitMqConnectionSpy = new RabbitMqConnectionSpy();
+		rabbitMqConnectionSpy.throwErrorOnCloseConnection = throwErrorOnCloseConnection;
 		rabbitMqConnectionSpy.host = host;
 		rabbitMqConnectionSpy.port = port;
 		rabbitMqConnectionSpy.virtualHost = virtualHost;

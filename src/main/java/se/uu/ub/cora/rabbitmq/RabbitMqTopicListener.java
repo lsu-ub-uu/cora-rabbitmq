@@ -21,7 +21,9 @@ package se.uu.ub.cora.rabbitmq;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 import com.rabbitmq.client.CancelCallback;
 import com.rabbitmq.client.Channel;
@@ -39,6 +41,8 @@ public class RabbitMqTopicListener implements MessageListener {
 
 	private ConnectionFactory connectionFactory;
 	private AmqpMessageRoutingInfo messagingRoutingInfo;
+	private Connection connection;
+	private Channel channel;
 
 	public static RabbitMqTopicListener usingConnectionFactoryAndMessageRoutingInfo(
 			ConnectionFactory connectionFactory, MessageRoutingInfo messagingRoutingInfo) {
@@ -54,17 +58,18 @@ public class RabbitMqTopicListener implements MessageListener {
 
 	@Override
 	public void listen(MessageReceiver messageReceiver) {
-		tryTolisten(messageReceiver);
-	}
-
-	private void tryTolisten(MessageReceiver messageReceiver) {
-		setupConnectionFactory();
-		try (Connection connection = connectionFactory.newConnection();
-				Channel channel = connection.createChannel()) {
-			listenMessages(messageReceiver, channel);
+		try {
+			tryTolisten(messageReceiver);
 		} catch (Exception e) {
 			throw new MessagingInitializationException(e.getMessage());
 		}
+	}
+
+	private void tryTolisten(MessageReceiver messageReceiver) throws IOException, TimeoutException {
+		setupConnectionFactory();
+		connection = connectionFactory.newConnection();
+		channel = connection.createChannel();
+		listenMessages(messageReceiver, channel);
 	}
 
 	private void listenMessages(MessageReceiver messageReceiver, Channel channel)
@@ -97,14 +102,34 @@ public class RabbitMqTopicListener implements MessageListener {
 
 	private DeliverCallback getDeliverCallback(MessageReceiver messageReceiver) {
 		return (consumerTag, delivery) -> {
-			Map<String, Object> headers = delivery.getProperties().getHeaders();
+
+			Map<String, Object> nativeHeaders = delivery.getProperties().getHeaders();
+			Map<String, String> headers = new HashMap<>();
+			nativeHeaders.forEach((key, value) -> extracted(headers, key, value));
+
 			String message = new String(delivery.getBody(), StandardCharsets.UTF_8);
 			messageReceiver.receiveMessage(headers, message);
 		};
 	}
 
+	private String extracted(Map<String, String> headers, String key, Object value) {
+		return headers.put(key, String.valueOf(value));
+	}
+
 	private CancelCallback getCancelCallback(MessageReceiver messageReceiver) {
-		return consumerTag -> messageReceiver.topicClosed();
+		return consumerTag -> {
+			messageReceiver.topicClosed();
+			tryToCloseConnection();
+		};
+	}
+
+	private void tryToCloseConnection() {
+		try {
+			channel.close();
+			connection.close();
+		} catch (Exception e) {
+			throw new RuntimeException(e.getMessage());
+		}
 	}
 
 	ConnectionFactory getConnectionFactory() {
