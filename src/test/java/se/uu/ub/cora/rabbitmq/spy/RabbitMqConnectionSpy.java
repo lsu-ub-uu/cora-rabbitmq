@@ -16,7 +16,7 @@
  *     You should have received a copy of the GNU General Public License
  *     along with Cora.  If not, see <http://www.gnu.org/licenses/>.
  */
-package se.uu.ub.cora.rabbitmq;
+package se.uu.ub.cora.rabbitmq.spy;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -35,8 +35,12 @@ import com.rabbitmq.client.UnblockedCallback;
 
 public class RabbitMqConnectionSpy implements Connection {
 
-	List<RabbitMqChannelSpy> createdChannels = new ArrayList<RabbitMqChannelSpy>();
+	public List<RabbitMqChannelSpy> createdChannels = new ArrayList<RabbitMqChannelSpy>();
 	public boolean closeHasBeenCalled = false;
+	public String host;
+	public int port;
+	public String virtualHost;
+	public boolean throwErrorOnCloseConnection = false;
 
 	@Override
 	public void addShutdownListener(ShutdownListener listener) {
@@ -133,6 +137,9 @@ public class RabbitMqConnectionSpy implements Connection {
 	@Override
 	public void close() throws IOException {
 		closeHasBeenCalled = true;
+		if (throwErrorOnCloseConnection) {
+			throw new RuntimeException("Error from RabbitMqConnectionSpy on close");
+		}
 	}
 
 	@Override

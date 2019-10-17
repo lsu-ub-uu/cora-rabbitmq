@@ -28,6 +28,7 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 
+import se.uu.ub.cora.messaging.AmqpMessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
@@ -40,14 +41,16 @@ import se.uu.ub.cora.messaging.MessagingInitializationException;
 public class RabbitMqTopicSender implements MessageSender {
 
 	public static RabbitMqTopicSender usingConnectionFactoryAndMessageRoutingInfo(
-			ConnectionFactory rabbitFactory, MessageRoutingInfo routingInfo) {
+			ConnectionFactory rabbitFactory, AmqpMessageRoutingInfo routingInfo) {
 		return new RabbitMqTopicSender(rabbitFactory, routingInfo);
 	}
 
 	private ConnectionFactory rabbitFactory;
-	private MessageRoutingInfo routingInfo;
+	private AmqpMessageRoutingInfo routingInfo;
 
-	private RabbitMqTopicSender(ConnectionFactory rabbitFactory, MessageRoutingInfo routingInfo) {
+	private RabbitMqTopicSender(ConnectionFactory rabbitFactory,
+			AmqpMessageRoutingInfo routingInfo) {
+
 		this.rabbitFactory = rabbitFactory;
 		this.routingInfo = routingInfo;
 		rabbitFactory.setHost(routingInfo.hostname);
