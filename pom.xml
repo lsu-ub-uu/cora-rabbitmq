@@ -14,20 +14,17 @@
 	<parent>
 		<groupId>se.uu.ub.cora</groupId>
 		<artifactId>cora-parent</artifactId>
-		<version>0.9.0</version>
+		<version>1.0.2</version>
 	</parent>
 
 	<artifactId>rabbitmq</artifactId>
 	<version>1.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
-	<build>
-		<finalName>cora-${project.artifactId}-${project.version}</finalName>
-	</build>
 	<name>rabbitmq</name>
 
 	<properties>
-		<messaging.version>1.1-SNAPSHOT</messaging.version>
-		<logger.version>1.0.0</logger.version>
+		<messaging.version>2.0.0</messaging.version>
+		<logger.version>2.0.0</logger.version>
 		<rabbitMQ.version>5.6.0</rabbitMQ.version>
 	</properties>
 
