@@ -20,6 +20,7 @@
 package se.uu.ub.cora.rabbitmq;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import com.rabbitmq.client.AMQP;
@@ -54,7 +55,7 @@ public class RabbitMqTopicSender implements MessageSender {
 		this.rabbitFactory = rabbitFactory;
 		this.routingInfo = routingInfo;
 		rabbitFactory.setHost(routingInfo.hostname);
-		rabbitFactory.setPort(Integer.valueOf(routingInfo.port));
+		rabbitFactory.setPort(Integer.parseInt(routingInfo.port));
 		rabbitFactory.setVirtualHost(routingInfo.virtualHost);
 	}
 
@@ -74,7 +75,7 @@ public class RabbitMqTopicSender implements MessageSender {
 				Channel channel = connection.createChannel()) {
 			publishMessage(headers, message, channel);
 		} catch (Exception e) {
-			throw new MessagingInitializationException(e.getMessage());
+			throw new MessagingInitializationException(e.getMessage(), e);
 		}
 	}
 
@@ -83,7 +84,7 @@ public class RabbitMqTopicSender implements MessageSender {
 		String exchange = routingInfo.exchange;
 		String routingKey = routingInfo.routingKey;
 		BasicProperties props = createPropertiesWithHeaders(headers);
-		byte[] bytes = message.getBytes();
+		byte[] bytes = message.getBytes(StandardCharsets.UTF_8);
 
 		channel.basicPublish(exchange, routingKey, props, bytes);
 	}

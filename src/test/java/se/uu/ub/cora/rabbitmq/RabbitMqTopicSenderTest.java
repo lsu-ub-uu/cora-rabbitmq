@@ -47,8 +47,8 @@ public class RabbitMqTopicSenderTest {
 	@BeforeMethod
 	public void beforeMethod() {
 		rabbitFactorySpy = new RabbitMqConnectionFactorySpy();
-		routingInfo = new AmqpMessageRoutingInfo("messaging.alvin-portal.org", "5672",
-				"alvin", "index", "alvin.updates.#");
+		routingInfo = new AmqpMessageRoutingInfo("messaging.alvin-portal.org", "5672", "alvin",
+				"index", "alvin.updates.#");
 		messageSender = RabbitMqTopicSender
 				.usingConnectionFactoryAndMessageRoutingInfo(rabbitFactorySpy, routingInfo);
 	}
@@ -79,6 +79,16 @@ public class RabbitMqTopicSenderTest {
 	public void testExceptionHandlingOnSendMessage() throws Exception {
 		rabbitFactorySpy.throwErrorOnSendMessage = true;
 		messageSender.sendMessage(null, "");
+	}
+
+	@Test
+	public void testExceptionHandlingOnSendMessageSendsAlongInitialException() throws Exception {
+		rabbitFactorySpy.throwErrorOnSendMessage = true;
+		try {
+			messageSender.sendMessage(null, "");
+		} catch (Exception e) {
+			assertTrue(e.getCause() instanceof RuntimeException);
+		}
 	}
 
 	@Test
