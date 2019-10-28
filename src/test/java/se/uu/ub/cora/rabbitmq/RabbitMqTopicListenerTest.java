@@ -100,6 +100,17 @@ public class RabbitMqTopicListenerTest {
 	}
 
 	@Test
+	public void testExceptionHandlingOnSendMessageSendsAlongInitialException() throws Exception {
+		rabbitConnectionFactorySpy.throwErrorOnSendMessage = true;
+		try {
+			listener.listen(null);
+		} catch (Exception e) {
+			assertTrue(e.getCause() instanceof RuntimeException);
+		}
+
+	}
+
+	@Test
 	public void testListenMessageCreatesChannel() throws Exception {
 		listener.listen(null);
 		RabbitMqConnectionSpy firstCreatedConnection = getCreatedRabbitConnection(0);
@@ -213,6 +224,30 @@ public class RabbitMqTopicListenerTest {
 				.get("cancelCallback");
 
 		cancelCallback.handle("consumerTag");
+	}
+
+	@Test
+	public void testCallbackCancelErrorClosingSendsAlongInitilException() throws Exception {
+		rabbitConnectionFactorySpy.throwErrorOnCloseConnection = true;
+		MessageReceiverSpy messageReceiverSpy = new MessageReceiverSpy();
+		RabbitMqChannelSpy channelSpy = null;
+		boolean exceptionWasThrown = false;
+
+		try {
+			listener.listen(messageReceiverSpy);
+
+			RabbitMqConnectionSpy firstCreatedConnection = getCreatedRabbitConnection(0);
+			channelSpy = getRabbitChannel(0, firstCreatedConnection);
+
+			CancelCallback cancelCallback = (CancelCallback) channelSpy.basicConsumes.get(0)
+					.get("cancelCallback");
+
+			cancelCallback.handle("consumerTag");
+		} catch (Exception e) {
+			assertTrue(e.getCause() instanceof RuntimeException);
+			exceptionWasThrown = true;
+		}
+		assertTrue(exceptionWasThrown);
 	}
 
 	private RabbitMqConnectionSpy getCreatedRabbitConnection(int position) {

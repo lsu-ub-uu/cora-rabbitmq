@@ -61,7 +61,7 @@ public class RabbitMqTopicListener implements MessageListener {
 		try {
 			tryTolisten(messageReceiver);
 		} catch (Exception e) {
-			throw new MessagingInitializationException(e.getMessage());
+			throw new MessagingInitializationException(e.getMessage(), e);
 		}
 	}
 
@@ -128,7 +128,7 @@ public class RabbitMqTopicListener implements MessageListener {
 			channel.close();
 			connection.close();
 		} catch (Exception e) {
-			throw new RuntimeException(e.getMessage());
+			throw new RuntimeException(e.getMessage(), e);
 		}
 	}
 
