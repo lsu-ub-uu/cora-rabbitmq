@@ -25,7 +25,7 @@
 	<properties>
 		<messaging.version>2.5.0</messaging.version>
 		<logger.version>2.4.0</logger.version>
-		<rabbitMQ.version>5.13.1</rabbitMQ.version>
+		<rabbitMQ.version>5.14.2</rabbitMQ.version>
 	</properties>
 
 	<scm>
