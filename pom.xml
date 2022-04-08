@@ -14,7 +14,7 @@
 	<parent>
 		<groupId>se.uu.ub.cora</groupId>
 		<artifactId>cora-parent</artifactId>
-		<version>1.4.4</version>
+		<version>2.0.0</version>
 	</parent>
 
 	<artifactId>rabbitmq</artifactId>
@@ -23,8 +23,8 @@
 	<name>rabbitmq</name>
 
 	<properties>
-		<messaging.version>2.5.0</messaging.version>
-		<logger.version>2.4.0</logger.version>
+		<messaging.version>2.6.0</messaging.version>
+		<logger.version>2.5.0</logger.version>
 		<rabbitMQ.version>5.14.2</rabbitMQ.version>
 	</properties>
 
