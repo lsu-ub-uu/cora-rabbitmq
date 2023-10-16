@@ -73,6 +73,7 @@ public class RabbitMqTopicSender implements MessageSender {
 	private void tryToSendMessage(Map<String, Object> headers, String message) {
 		try (Connection connection = rabbitFactory.newConnection();
 				Channel channel = connection.createChannel()) {
+			// channel.queueDeclare(TASK_QUEUE_NAME, true, false, false, null);
 			publishMessage(headers, message, channel);
 		} catch (Exception e) {
 			throw new MessagingInitializationException(e.getMessage(), e);

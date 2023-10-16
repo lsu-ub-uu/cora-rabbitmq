@@ -80,6 +80,7 @@ public class RabbitMqTopicListener implements MessageListener {
 	private void startListening(MessageReceiver messageReceiver, Channel channel)
 			throws IOException {
 		String queueName = bindQueue(channel);
+		// needs to be possible to change
 		boolean autoAck = true;
 		DeliverCallback deliverCallback = getDeliverCallback(messageReceiver);
 		CancelCallback cancelCallback = getCancelCallback(messageReceiver);
@@ -95,6 +96,8 @@ public class RabbitMqTopicListener implements MessageListener {
 
 	private String bindQueue(Channel channel) throws IOException {
 		String queueName = channel.queueDeclare().getQueue();
+		// channel.basicQos(1);
+		// channel.queueDeclare(TASK_QUEUE_NAME, true, false, false, null);
 		channel.queueBind(queueName, messagingRoutingInfo.exchange,
 				messagingRoutingInfo.routingKey);
 		return queueName;
@@ -108,6 +111,12 @@ public class RabbitMqTopicListener implements MessageListener {
 			nativeHeaders.forEach((key, value) -> extracted(headers, key, value));
 
 			String message = new String(delivery.getBody(), StandardCharsets.UTF_8);
+
+			// long deliveryTag = delivery.getEnvelope().getDeliveryTag();
+			// channel.basicAck(deliveryTag, false);
+			// channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+
+			// messageReceiver, need possibility to do channel.basicAck
 			messageReceiver.receiveMessage(headers, message);
 		};
 	}
