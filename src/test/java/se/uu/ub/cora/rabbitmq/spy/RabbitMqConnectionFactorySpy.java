@@ -20,49 +20,41 @@
 package se.uu.ub.cora.rabbitmq.spy;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 
+import se.uu.ub.cora.testutils.mcr.MethodCallRecorder;
+import se.uu.ub.cora.testutils.mrv.MethodReturnValues;
+
 public class RabbitMqConnectionFactorySpy extends ConnectionFactory {
 
-	public String host;
-	public int port;
-	public String virtualHost;
-	public List<RabbitMqConnectionSpy> createdConnections = new ArrayList<>();
-	public boolean throwErrorOnSendMessage = false;
-	public boolean throwErrorOnCloseConnection = false;
+	public MethodCallRecorder MCR = new MethodCallRecorder();
+	public MethodReturnValues MRV = new MethodReturnValues();
+
+	public RabbitMqConnectionFactorySpy() {
+		MCR.useMRV(MRV);
+		MRV.setDefaultReturnValuesSupplier("newConnection", RabbitMqConnectionSpy::new);
+	}
 
 	@Override
 	public void setHost(String host) {
-		this.host = host;
+		MCR.addCall("host", host);
 	}
 
 	@Override
 	public void setPort(int port) {
-		this.port = port;
+		MCR.addCall("port", port);
 	}
 
 	@Override
 	public void setVirtualHost(String virtualHost) {
-		this.virtualHost = virtualHost;
+		MCR.addCall("virtualHost", virtualHost);
 	}
 
 	@Override
 	public Connection newConnection() throws IOException, TimeoutException {
-		if (throwErrorOnSendMessage) {
-			throw new RuntimeException("Error from RabbitMqConnectionFactorySpy on newConnection");
-		}
-		RabbitMqConnectionSpy rabbitMqConnectionSpy = new RabbitMqConnectionSpy();
-		rabbitMqConnectionSpy.throwErrorOnCloseConnection = throwErrorOnCloseConnection;
-		rabbitMqConnectionSpy.host = host;
-		rabbitMqConnectionSpy.port = port;
-		rabbitMqConnectionSpy.virtualHost = virtualHost;
-
-		createdConnections.add(rabbitMqConnectionSpy);
-		return rabbitMqConnectionSpy;
+		return (Connection) MCR.addCallAndReturnFromMRV();
 	}
 }

@@ -20,8 +20,6 @@ package se.uu.ub.cora.rabbitmq.spy;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import com.rabbitmq.client.BlockedCallback;
@@ -33,14 +31,18 @@ import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.UnblockedCallback;
 
+import se.uu.ub.cora.testutils.mcr.MethodCallRecorder;
+import se.uu.ub.cora.testutils.mrv.MethodReturnValues;
+
 public class RabbitMqConnectionSpy implements Connection {
 
-	public List<RabbitMqChannelSpy> createdChannels = new ArrayList<RabbitMqChannelSpy>();
-	public boolean closeHasBeenCalled = false;
-	public String host;
-	public int port;
-	public String virtualHost;
-	public boolean throwErrorOnCloseConnection = false;
+	public MethodCallRecorder MCR = new MethodCallRecorder();
+	public MethodReturnValues MRV = new MethodReturnValues();
+
+	public RabbitMqConnectionSpy() {
+		MCR.useMRV(MRV);
+		MRV.setDefaultReturnValuesSupplier("createChannel", RabbitMqChannelSpy::new);
+	}
 
 	@Override
 	public void addShutdownListener(ShutdownListener listener) {
@@ -122,10 +124,7 @@ public class RabbitMqConnectionSpy implements Connection {
 
 	@Override
 	public Channel createChannel() throws IOException {
-		RabbitMqChannelSpy rabbitChannel = new RabbitMqChannelSpy();
-
-		createdChannels.add(rabbitChannel);
-		return rabbitChannel;
+		return (Channel) MCR.addCallAndReturnFromMRV();
 	}
 
 	@Override
@@ -136,10 +135,11 @@ public class RabbitMqConnectionSpy implements Connection {
 
 	@Override
 	public void close() throws IOException {
-		closeHasBeenCalled = true;
-		if (throwErrorOnCloseConnection) {
-			throw new RuntimeException("Error from RabbitMqConnectionSpy on close");
-		}
+		MCR.addCall();
+		// closeHasBeenCalled = true;
+		// if (throwErrorOnCloseConnection) {
+		// throw new RuntimeException("Error from RabbitMqConnectionSpy on close");
+		// }
 	}
 
 	@Override

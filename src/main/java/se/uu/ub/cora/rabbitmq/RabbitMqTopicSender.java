@@ -30,7 +30,7 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 
-import se.uu.ub.cora.messaging.AmqpMessageRoutingInfo;
+import se.uu.ub.cora.messaging.AmqpMessageRoutingInfoSender;
 import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
@@ -42,16 +42,16 @@ import se.uu.ub.cora.messaging.MessagingInitializationException;
 
 public class RabbitMqTopicSender implements MessageSender {
 
-	public static RabbitMqTopicSender usingConnectionFactoryAndMessageRoutingInfo(
-			ConnectionFactory rabbitFactory, AmqpMessageRoutingInfo routingInfo) {
+	public static RabbitMqTopicSender usingConnectionFactoryAndMessageRoutingInfoSender(
+			ConnectionFactory rabbitFactory, AmqpMessageRoutingInfoSender routingInfo) {
 		return new RabbitMqTopicSender(rabbitFactory, routingInfo);
 	}
 
 	private ConnectionFactory rabbitFactory;
-	private AmqpMessageRoutingInfo routingInfo;
+	private AmqpMessageRoutingInfoSender routingInfo;
 
 	private RabbitMqTopicSender(ConnectionFactory rabbitFactory,
-			AmqpMessageRoutingInfo routingInfo) {
+			AmqpMessageRoutingInfoSender routingInfo) {
 
 		this.rabbitFactory = rabbitFactory;
 		this.routingInfo = routingInfo;
@@ -75,8 +75,6 @@ public class RabbitMqTopicSender implements MessageSender {
 		try (Connection connection = rabbitFactory.newConnection();
 				Channel channel = connection.createChannel()) {
 			///
-			// channel.queueDeclare("TASK_QUEUE_NAME", true, false, false, null);
-			// channel.queueDeclare(routingInfo.routingKey, true, false, false, null);
 			channel.exchangeDeclare(routingInfo.exchange, BuiltinExchangeType.DIRECT, true);
 			channel.queueDeclare("workerQ", true, false, false, null);
 			channel.queueBind("workerQ", routingInfo.exchange, routingInfo.routingKey);
@@ -91,18 +89,12 @@ public class RabbitMqTopicSender implements MessageSender {
 
 	private void publishMessage(Map<String, Object> headers, String message, Channel channel)
 			throws IOException {
-		// String queueName = channel.queueDeclare().getQueue();
-		// System.out.println("sender:" + queueName);
 
 		String exchange = routingInfo.exchange;
 		String routingKey = routingInfo.routingKey;
 		BasicProperties props = createPropertiesWithHeaders(headers);
 		byte[] bytes = message.getBytes(StandardCharsets.UTF_8);
-		///
-		// channel.basicPublish("", "TASK_QUEUE_NAME", props, bytes);
-		///
-		// channel.basicPublish("", routingKey, props, bytes);
-		System.out.println("Publisher exchange: " + exchange);
+
 		channel.basicPublish(exchange, routingKey, props, bytes);
 	}
 
