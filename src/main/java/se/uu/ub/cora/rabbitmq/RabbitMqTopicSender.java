@@ -74,7 +74,8 @@ public class RabbitMqTopicSender implements MessageSender {
 	private void tryToSendMessage(Map<String, Object> headers, String message) {
 		try (Connection connection = rabbitFactory.newConnection();
 				Channel channel = connection.createChannel()) {
-			///
+
+			/// MOVE TO SERVER START///
 			channel.exchangeDeclare(routingInfo.exchange, BuiltinExchangeType.DIRECT, true);
 			channel.queueDeclare("workerQ", true, false, false, null);
 			channel.queueBind("workerQ", routingInfo.exchange, routingInfo.routingKey);
