@@ -25,6 +25,7 @@ import java.util.Map;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.BasicProperties;
+import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -73,7 +74,15 @@ public class RabbitMqTopicSender implements MessageSender {
 	private void tryToSendMessage(Map<String, Object> headers, String message) {
 		try (Connection connection = rabbitFactory.newConnection();
 				Channel channel = connection.createChannel()) {
-			// channel.queueDeclare(TASK_QUEUE_NAME, true, false, false, null);
+			///
+			// channel.queueDeclare("TASK_QUEUE_NAME", true, false, false, null);
+			// channel.queueDeclare(routingInfo.routingKey, true, false, false, null);
+			channel.exchangeDeclare(routingInfo.exchange, BuiltinExchangeType.DIRECT, true);
+			channel.queueDeclare("workerQ", true, false, false, null);
+			channel.queueBind("workerQ", routingInfo.exchange, routingInfo.routingKey);
+			channel.basicQos(1);
+			///
+
 			publishMessage(headers, message, channel);
 		} catch (Exception e) {
 			throw new MessagingInitializationException(e.getMessage(), e);
@@ -82,11 +91,18 @@ public class RabbitMqTopicSender implements MessageSender {
 
 	private void publishMessage(Map<String, Object> headers, String message, Channel channel)
 			throws IOException {
+		// String queueName = channel.queueDeclare().getQueue();
+		// System.out.println("sender:" + queueName);
+
 		String exchange = routingInfo.exchange;
 		String routingKey = routingInfo.routingKey;
 		BasicProperties props = createPropertiesWithHeaders(headers);
 		byte[] bytes = message.getBytes(StandardCharsets.UTF_8);
-
+		///
+		// channel.basicPublish("", "TASK_QUEUE_NAME", props, bytes);
+		///
+		// channel.basicPublish("", routingKey, props, bytes);
+		System.out.println("Publisher exchange: " + exchange);
 		channel.basicPublish(exchange, routingKey, props, bytes);
 	}
 
