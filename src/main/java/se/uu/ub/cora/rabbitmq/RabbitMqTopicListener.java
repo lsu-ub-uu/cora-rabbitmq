@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Uppsala University Library
+ * Copyright 2019, 2023 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -16,24 +16,24 @@
  *     You should have received a copy of the GNU General Public License
  *     along with Cora.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package se.uu.ub.cora.rabbitmq;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
-import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.CancelCallback;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
+import com.rabbitmq.client.Delivery;
 import com.rabbitmq.client.Envelope;
 
-import se.uu.ub.cora.messaging.AmqpMessageRoutingInfo;
+import se.uu.ub.cora.messaging.AmqpMessageListenerRoutingInfo;
 import se.uu.ub.cora.messaging.MessageListener;
 import se.uu.ub.cora.messaging.MessageReceiver;
 import se.uu.ub.cora.messaging.MessageRoutingInfo;
@@ -42,16 +42,16 @@ import se.uu.ub.cora.messaging.MessagingInitializationException;
 public class RabbitMqTopicListener implements MessageListener {
 
 	private ConnectionFactory connectionFactory;
-	private AmqpMessageRoutingInfo routingInfo;
+	private AmqpMessageListenerRoutingInfo routingInfo;
 	private Connection connection;
 
 	public static RabbitMqTopicListener usingConnectionFactoryAndMessageRoutingInfo(
-			ConnectionFactory connectionFactory, MessageRoutingInfo routingInfo) {
-		return new RabbitMqTopicListener(connectionFactory, (AmqpMessageRoutingInfo) routingInfo);
+			ConnectionFactory connectionFactory, AmqpMessageListenerRoutingInfo routingInfo) {
+		return new RabbitMqTopicListener(connectionFactory, routingInfo);
 	}
 
 	private RabbitMqTopicListener(ConnectionFactory connectionFactory,
-			AmqpMessageRoutingInfo routingInfo) {
+			AmqpMessageListenerRoutingInfo routingInfo) {
 		this.connectionFactory = connectionFactory;
 		this.routingInfo = routingInfo;
 	}
@@ -61,7 +61,12 @@ public class RabbitMqTopicListener implements MessageListener {
 		try {
 			tryTolisten(messageReceiver);
 		} catch (Exception e) {
-			throw new MessagingInitializationException(e.getMessage(), e);
+			String errorMessage = "Error trying to listen rabbitMQ queue on "
+					+ "{0}:{1}, vhost: {2} and queue: {3}";
+
+			throw new MessagingInitializationException(MessageFormat.format(errorMessage,
+					routingInfo.hostname, String.valueOf(routingInfo.port), routingInfo.virtualHost,
+					routingInfo.queueName), e);
 		}
 	}
 
@@ -71,20 +76,20 @@ public class RabbitMqTopicListener implements MessageListener {
 		Channel channel = connection.createChannel();
 
 		///
-
-		channel.exchangeDeclare(routingInfo.exchange, BuiltinExchangeType.DIRECT, true);
-		channel.queueDeclare("workerQ", true, false, false, null);
-		channel.queueBind("workerQ", routingInfo.exchange,
-				routingInfo.routingKey);
-		channel.basicQos(1);
+		/// MOVE TO rabbit SERVER configuration
+		// channel.exchangeDeclare(routingInfo.exchange, BuiltinExchangeType.DIRECT, true);
+		// channel.queueDeclare("workerQ", true, false, false, null);
+		// channel.queueBind("workerQ", routingInfo.exchange, routingInfo.routingKey);
+		// channel.basicQos(1);
 		///
 
-		listenMessages(messageReceiver, channel);
+		startListening(messageReceiver, channel);
 	}
 
-	private void listenMessages(MessageReceiver messageReceiver, Channel channel)
-			throws IOException {
-		startListening(messageReceiver, channel);
+	private void setupConnectionFactory() {
+		connectionFactory.setHost(routingInfo.hostname);
+		connectionFactory.setPort(routingInfo.port);
+		connectionFactory.setVirtualHost(routingInfo.virtualHost);
 	}
 
 	private void startListening(MessageReceiver messageReceiver, Channel channel)
@@ -98,7 +103,7 @@ public class RabbitMqTopicListener implements MessageListener {
 		DeliverCallback deliverCallback = getDeliverCallback(messageReceiver, channel);
 		CancelCallback cancelCallback = getCancelCallback(messageReceiver, channel);
 
-		channel.basicConsume("workerQ", autoAck, deliverCallback, cancelCallback);
+		channel.basicConsume(routingInfo.queueName, autoAck, deliverCallback, cancelCallback);
 
 		// channel.basicConsume("TASK_QUEUE_NAME", autoAck, deliverCallback, cancelCallback);
 		// try {
@@ -107,12 +112,6 @@ public class RabbitMqTopicListener implements MessageListener {
 		// // TODO Auto-generated catch block
 		// e.printStackTrace();
 		// }
-	}
-
-	private void setupConnectionFactory() {
-		connectionFactory.setHost(routingInfo.hostname);
-		connectionFactory.setPort(Integer.parseInt(routingInfo.port));
-		connectionFactory.setVirtualHost(routingInfo.virtualHost);
 	}
 
 	// private String bindQueue(Channel channel) throws IOException {
@@ -126,41 +125,34 @@ public class RabbitMqTopicListener implements MessageListener {
 
 	private DeliverCallback getDeliverCallback(MessageReceiver messageReceiver, Channel channel) {
 		return (consumerTag, delivery) -> {
-			// System.out.println("here1");
-			Map<String, Object> nativeHeaders = delivery.getProperties().getHeaders();
-			// System.out.println("here12");
-			Map<String, String> headers = new HashMap<>();
-			// System.out.println("here13");
-			// System.out.println("here13: " + nativeHeaders);
-
-			nativeHeaders.forEach((key, value) -> extracted(headers, key, value));
-			// System.out.println("here2");
-
-			String message = new String(delivery.getBody(), StandardCharsets.UTF_8);
-			// System.out.println("here3");
-
-			// long deliveryTag = delivery.getEnvelope().getDeliveryTag();
-			// channel.basicAck(deliveryTag, false);
-			// channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-
-			// messageReceiver, need possibility to do channel.basicAck
+			Map<String, String> headers = getHeadersFromDelivery(delivery);
+			String message = getMessageFromDelivery(delivery);
 			messageReceiver.receiveMessage(headers, message);
-			System.out.println("doing ack after work...");
-			try {
 
-				Envelope envelope = delivery.getEnvelope();
-				long deliveryTag = envelope.getDeliveryTag();
-				System.out.println("deliveryTag: " + deliveryTag);
-				channel.basicAck(deliveryTag, false);
-			} catch (Exception e) {
-				System.err.println(e);
-			}
-			System.out.println("doing ack after work...later");
+			acknowledgeMessage(channel, delivery);
 		};
 	}
 
-	private String extracted(Map<String, String> headers, String key, Object value) {
+	private Map<String, String> getHeadersFromDelivery(Delivery delivery) {
+		Map<String, Object> nativeHeaders = delivery.getProperties().getHeaders();
+		Map<String, String> headers = new HashMap<>();
+
+		nativeHeaders.forEach((key, value) -> putHeaderInMap(headers, key, value));
+		return headers;
+	}
+
+	private String putHeaderInMap(Map<String, String> headers, String key, Object value) {
 		return headers.put(key, String.valueOf(value));
+	}
+
+	private String getMessageFromDelivery(Delivery delivery) {
+		return new String(delivery.getBody(), StandardCharsets.UTF_8);
+	}
+
+	private void acknowledgeMessage(Channel channel, Delivery delivery) throws IOException {
+		Envelope envelope = delivery.getEnvelope();
+		long deliveryTag = envelope.getDeliveryTag();
+		channel.basicAck(deliveryTag, false);
 	}
 
 	private CancelCallback getCancelCallback(MessageReceiver messageReceiver, Channel channel) {
@@ -175,17 +167,16 @@ public class RabbitMqTopicListener implements MessageListener {
 			channel.close();
 			connection.close();
 		} catch (Exception e) {
-			throw new RuntimeException(e.getMessage(), e);
+			throw new RuntimeException(
+					"Error closing channel and connection in RabbitMqTopicListener", e);
 		}
 	}
 
-	ConnectionFactory getConnectionFactory() {
-		// needed for test
+	ConnectionFactory onlyForTestGetConnectionFactory() {
 		return connectionFactory;
 	}
 
-	MessageRoutingInfo getMessageRoutingInfo() {
-		// needed for test
+	MessageRoutingInfo onlyForTestGetMessageRoutingInfo() {
 		return routingInfo;
 	}
 }

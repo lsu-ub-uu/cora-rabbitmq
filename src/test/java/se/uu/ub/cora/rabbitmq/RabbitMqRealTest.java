@@ -27,14 +27,14 @@ import java.util.Map;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import se.uu.ub.cora.messaging.AmqpMessageRoutingInfo;
+import se.uu.ub.cora.messaging.AmqpMessageListenerRoutingInfo;
 import se.uu.ub.cora.messaging.MessageListener;
 import se.uu.ub.cora.messaging.MessageReceiver;
 import se.uu.ub.cora.messaging.MessageSender;
 
 public class RabbitMqRealTest {
 
-	private AmqpMessageRoutingInfo routingInfo;
+	private AmqpMessageListenerRoutingInfo routingInfo;
 	private RabbitMqMessagingFactory factory;
 	private MessageSender messageSender;
 	private MessageListener messageListener;
@@ -48,7 +48,7 @@ public class RabbitMqRealTest {
 		String virtualHost = "/";
 		String exchange = "workerE";
 		String routingKey = "";
-		routingInfo = new AmqpMessageRoutingInfo("systemone-rabbitmq", "5672", virtualHost,
+		routingInfo = new AmqpMessageListenerRoutingInfo("systemone-rabbitmq", "5672", virtualHost,
 				exchange, routingKey);
 		// routingInfo = new MessageRoutingInfo("systemone-rabbitmq", "5672", "/", "amq.direct",
 		// "alvin.updates.#");

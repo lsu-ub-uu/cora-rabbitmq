@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Uppsala University Library
+ * Copyright 2019, 2023 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -19,26 +19,25 @@
 
 package se.uu.ub.cora.rabbitmq.spy;
 
-import com.rabbitmq.client.AMQP.Queue.BindOk;
+import com.rabbitmq.client.Envelope;
 
-public class BindOkSpy implements BindOk {
+import se.uu.ub.cora.testutils.mcr.MethodCallRecorder;
+import se.uu.ub.cora.testutils.mrv.MethodReturnValues;
 
-	@Override
-	public int protocolClassId() {
-		// TODO Auto-generated method stub
-		return 0;
+public class EnvelopeSpy extends Envelope {
+
+	public MethodCallRecorder MCR = new MethodCallRecorder();
+	public MethodReturnValues MRV = new MethodReturnValues();
+
+	public EnvelopeSpy() {
+		super(0L, false, null, null);
+		MCR.useMRV(MRV);
+		MRV.setDefaultReturnValuesSupplier("getDeliveryTag", () -> 10L);
 	}
 
 	@Override
-	public int protocolMethodId() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	@Override
-	public String protocolMethodName() {
-		// TODO Auto-generated method stub
-		return null;
+	public long getDeliveryTag() {
+		return (long) MCR.addCallAndReturnFromMRV();
 	}
 
 }

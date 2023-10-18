@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Uppsala University Library
+ * Copyright 2019, 2023 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -18,25 +18,27 @@
  */
 package se.uu.ub.cora.rabbitmq.spy;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import se.uu.ub.cora.messaging.MessageReceiver;
+import se.uu.ub.cora.testutils.mcr.MethodCallRecorder;
+import se.uu.ub.cora.testutils.mrv.MethodReturnValues;
 
 public class MessageReceiverSpy implements MessageReceiver {
-	public List<String> messages = new ArrayList<>();
-	public List<Map<String, String>> headers = new ArrayList<>();
-	public boolean topicClosedHasBeenCalled = false;
+	public MethodCallRecorder MCR = new MethodCallRecorder();
+	public MethodReturnValues MRV = new MethodReturnValues();
+
+	public MessageReceiverSpy() {
+		MCR.useMRV(MRV);
+	}
 
 	@Override
 	public void receiveMessage(Map<String, String> headers, String message) {
-		messages.add(message);
-		this.headers.add(headers);
+		MCR.addCall("headers", headers, "message", message);
 	}
 
 	@Override
 	public void topicClosed() {
-		topicClosedHasBeenCalled = true;
+		MCR.addCall();
 	}
 }

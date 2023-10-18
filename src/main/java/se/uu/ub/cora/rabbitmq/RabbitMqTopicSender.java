@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Uppsala University Library
+ * Copyright 2019, 2023 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -25,12 +25,11 @@ import java.util.Map;
 
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.BasicProperties;
-import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 
-import se.uu.ub.cora.messaging.AmqpMessageRoutingInfoSender;
+import se.uu.ub.cora.messaging.AmqpMessageSenderRoutingInfo;
 import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
@@ -43,20 +42,20 @@ import se.uu.ub.cora.messaging.MessagingInitializationException;
 public class RabbitMqTopicSender implements MessageSender {
 
 	public static RabbitMqTopicSender usingConnectionFactoryAndMessageRoutingInfoSender(
-			ConnectionFactory rabbitFactory, AmqpMessageRoutingInfoSender routingInfo) {
+			ConnectionFactory rabbitFactory, AmqpMessageSenderRoutingInfo routingInfo) {
 		return new RabbitMqTopicSender(rabbitFactory, routingInfo);
 	}
 
 	private ConnectionFactory rabbitFactory;
-	private AmqpMessageRoutingInfoSender routingInfo;
+	private AmqpMessageSenderRoutingInfo routingInfo;
 
 	private RabbitMqTopicSender(ConnectionFactory rabbitFactory,
-			AmqpMessageRoutingInfoSender routingInfo) {
+			AmqpMessageSenderRoutingInfo routingInfo) {
 
 		this.rabbitFactory = rabbitFactory;
 		this.routingInfo = routingInfo;
 		rabbitFactory.setHost(routingInfo.hostname);
-		rabbitFactory.setPort(Integer.parseInt(routingInfo.port));
+		rabbitFactory.setPort(routingInfo.port);
 		rabbitFactory.setVirtualHost(routingInfo.virtualHost);
 	}
 
@@ -75,11 +74,11 @@ public class RabbitMqTopicSender implements MessageSender {
 		try (Connection connection = rabbitFactory.newConnection();
 				Channel channel = connection.createChannel()) {
 
-			/// MOVE TO SERVER START///
-			channel.exchangeDeclare(routingInfo.exchange, BuiltinExchangeType.DIRECT, true);
-			channel.queueDeclare("workerQ", true, false, false, null);
-			channel.queueBind("workerQ", routingInfo.exchange, routingInfo.routingKey);
-			channel.basicQos(1);
+			/// MOVE TO rabbit SERVER configuration
+			// channel.exchangeDeclare(routingInfo.exchange, BuiltinExchangeType.DIRECT, true);
+			// channel.queueDeclare("workerQ", true, false, false, null);
+			// channel.queueBind("workerQ", routingInfo.exchange, routingInfo.routingKey);
+			// channel.basicQos(1);
 			///
 
 			publishMessage(headers, message, channel);
@@ -101,18 +100,15 @@ public class RabbitMqTopicSender implements MessageSender {
 
 	private BasicProperties createPropertiesWithHeaders(Map<String, Object> headers) {
 		AMQP.BasicProperties.Builder builder = new AMQP.BasicProperties.Builder();
-		builder.contentType("application/json");
 		builder.headers(headers);
 		return builder.build();
 	}
 
-	ConnectionFactory getConnectionFactory() {
-		// Needed for test
+	ConnectionFactory onlyForTestGetConnectionFactory() {
 		return rabbitFactory;
 	}
 
-	MessageRoutingInfo getMessageRoutingInfo() {
-		// needed for test
+	MessageRoutingInfo onlyForTestGetMessageRoutingInfo() {
 		return routingInfo;
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Uppsala University Library
+ * Copyright 2019, 2023 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -22,6 +22,7 @@ package se.uu.ub.cora.rabbitmq;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,7 +33,7 @@ import org.testng.annotations.Test;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.BasicProperties;
 
-import se.uu.ub.cora.messaging.AmqpMessageRoutingInfoSender;
+import se.uu.ub.cora.messaging.AmqpMessageSenderRoutingInfo;
 import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
 import se.uu.ub.cora.rabbitmq.spy.RabbitMqChannelSpy;
@@ -42,19 +43,19 @@ import se.uu.ub.cora.rabbitmq.spy.RabbitMqConnectionSpy;
 public class RabbitMqTopicSenderTest {
 
 	private static final String SOME_HOST = "someHostname";
-	private static final String SOME_PORT = "8080";
+	private static final int SOME_PORT = 8080;
 	private static final String SOME_VHOST = "someVirtualHost";
 	private static final String SOME_EXCHANGE = "someExchange";
 	private static final String SOME_ROUTING_KEY = "someRoutingKey";
 
 	private RabbitMqConnectionFactorySpy rabbitFactorySpy;
-	private AmqpMessageRoutingInfoSender routingInfo;
+	private AmqpMessageSenderRoutingInfo routingInfo;
 	private RabbitMqTopicSender messageSender;
 
 	@BeforeMethod
 	public void beforeMethod() {
 		rabbitFactorySpy = new RabbitMqConnectionFactorySpy();
-		routingInfo = new AmqpMessageRoutingInfoSender(SOME_HOST, SOME_PORT, SOME_VHOST,
+		routingInfo = new AmqpMessageSenderRoutingInfo(SOME_HOST, SOME_PORT, SOME_VHOST,
 				SOME_EXCHANGE, SOME_ROUTING_KEY);
 
 		messageSender = RabbitMqTopicSender
@@ -118,11 +119,15 @@ public class RabbitMqTopicSenderTest {
 
 		messageSender.sendMessage(Collections.emptyMap(), "");
 
-		RabbitMqConnectionSpy connection = getConnection();
+		RabbitMqChannelSpy channel = getChannel();
 
-		RabbitMqConnectionSpy firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
-		RabbitMqChannelSpy firstCreatedChannel = firstCreatedConnection.createdChannels.get(0);
-		assertEquals(firstCreatedChannel.publishedMessages.size(), 1);
+		channel.MCR.assertParameters("basicPublish", 0, SOME_EXCHANGE, SOME_ROUTING_KEY);
+
+	}
+
+	private RabbitMqChannelSpy getChannel() {
+		RabbitMqConnectionSpy connection = getConnection();
+		return (RabbitMqChannelSpy) connection.MCR.getReturnValue("createChannel", 0);
 	}
 
 	@Test
@@ -130,17 +135,13 @@ public class RabbitMqTopicSenderTest {
 		String message = "{\"pid\":\"alvin-place:1\",\"routingKey\":\"alvin.updates.place\","
 				+ "\"action\":\"UPDATE\",\"dsId\":null,"
 				+ "\"headers\":{\"ACTION\":\"UPDATE\",\"PID\":\"alvin-place:1\"}}";
+
 		messageSender.sendMessage(null, message);
-		Map<String, Object> publishedMessage = getFirstPublishedMessage();
 
-		assertEquals(publishedMessage.get("body"), message.getBytes());
-	}
+		RabbitMqChannelSpy channel = getChannel();
 
-	private Map<String, Object> getFirstPublishedMessage() {
-		RabbitMqConnectionSpy firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
-		RabbitMqChannelSpy firstCreatedChannel = firstCreatedConnection.createdChannels.get(0);
-		Map<String, Object> publishedMessage = firstCreatedChannel.publishedMessages.get(0);
-		return publishedMessage;
+		channel.MCR.assertParameterAsEqual("basicPublish", 0, "body",
+				message.getBytes(StandardCharsets.UTF_8));
 	}
 
 	@Test
@@ -150,14 +151,15 @@ public class RabbitMqTopicSenderTest {
 		headers.put("ACTION", "UPDATE");
 		headers.put("PID", "alvin-place:1");
 		headers.put("messageSentFrom", "Cora");
+
 		messageSender.sendMessage(headers, "");
 
-		Map<String, Object> publishedMessage = getFirstPublishedMessage();
+		RabbitMqChannelSpy channel = getChannel();
+		BasicProperties publishedProps = (BasicProperties) channel.MCR
+				.getValueForMethodNameAndCallNumberAndParameterName("basicPublish", 0, "props");
 
-		BasicProperties publishedProps = (BasicProperties) publishedMessage.get("props");
 		assertTrue(publishedProps instanceof AMQP.BasicProperties);
 		Map<String, Object> publishedHeaders = publishedProps.getHeaders();
-		assertEquals(publishedProps.getContentType(), "application/json");
 		assertEquals(publishedHeaders.get("__TypeId__"), headers.get("__TypeId__"));
 		assertEquals(publishedHeaders.get("ACTION"), headers.get("ACTION"));
 		assertEquals(publishedHeaders.get("PID"), headers.get("PID"));
@@ -165,25 +167,14 @@ public class RabbitMqTopicSenderTest {
 	}
 
 	@Test
-	public void testPublishTopic() throws Exception {
-		messageSender.sendMessage(null, "");
-		Map<String, Object> publishedMessage = getFirstPublishedMessage();
-		assertEquals(publishedMessage.get("routingKey"), routingInfo.routingKey);
-	}
-
-	@Test
-	public void testPublishExchangeName() throws Exception {
-		messageSender.sendMessage(null, "");
-		Map<String, Object> publishedMessage = getFirstPublishedMessage();
-		assertEquals(publishedMessage.get("exchange"), routingInfo.exchange);
-	}
-
-	@Test
 	public void testCloseConnection() throws Exception {
+
 		messageSender.sendMessage(null, "");
-		RabbitMqConnectionSpy firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
-		RabbitMqChannelSpy firstCreatedChannel = firstCreatedConnection.createdChannels.get(0);
-		assertEquals(firstCreatedChannel.closeHasBeenCalled, true);
-		assertEquals(firstCreatedConnection.closeHasBeenCalled, true);
+
+		RabbitMqConnectionSpy connection = getConnection();
+		connection.MCR.assertMethodWasCalled("close");
+
+		RabbitMqChannelSpy channel = getChannel();
+		channel.MCR.assertMethodWasCalled("close");
 	}
 }

@@ -19,9 +19,9 @@
 
 package se.uu.ub.cora.rabbitmq.spy;
 
-import com.rabbitmq.client.AMQP.Queue.BindOk;
+import com.rabbitmq.client.AMQP.Queue.DeclareOk;
 
-public class BindOkSpy implements BindOk {
+public class DeclareOKSpy implements DeclareOk {
 
 	@Override
 	public int protocolClassId() {
@@ -39,6 +39,24 @@ public class BindOkSpy implements BindOk {
 	public String protocolMethodName() {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public String getQueue() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public int getMessageCount() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public int getConsumerCount() {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 }

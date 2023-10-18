@@ -61,7 +61,8 @@ public class RabbitMqChannelSpy implements Channel {
 	public RabbitMqChannelSpy() {
 		MCR.useMRV(MRV);
 		MRV.setDefaultReturnValuesSupplier("queueBind", BindOkSpy::new);
-		MRV.setDefaultReturnValuesSupplier("queueBind", String::new);
+		MRV.setDefaultReturnValuesSupplier("basicConsume", String::new);
+		MRV.setDefaultReturnValuesSupplier("queueDeclare", DeclareOKSpy::new);
 	}
 
 	@Override
@@ -368,8 +369,8 @@ public class RabbitMqChannelSpy implements Channel {
 
 	@Override
 	public com.rabbitmq.client.AMQP.Queue.DeclareOk queueDeclare() throws IOException {
-		RabbitDeclareOkSpy declareOk = new RabbitDeclareOkSpy();
-		return declareOk;
+		return (com.rabbitmq.client.AMQP.Queue.DeclareOk) MCR.addCallAndReturnFromMRV();
+
 	}
 
 	@Override
@@ -463,7 +464,7 @@ public class RabbitMqChannelSpy implements Channel {
 
 	@Override
 	public void basicAck(long deliveryTag, boolean multiple) throws IOException {
-		// TODO Auto-generated method stub
+		MCR.addCall("deliveryTag", deliveryTag, "multiple", multiple);
 
 	}
 
