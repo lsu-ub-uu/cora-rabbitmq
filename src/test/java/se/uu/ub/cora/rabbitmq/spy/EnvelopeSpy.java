@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Uppsala University Library
+ * Copyright 2019, 2023 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -19,42 +19,25 @@
 
 package se.uu.ub.cora.rabbitmq.spy;
 
-import java.io.IOException;
-import java.util.concurrent.TimeoutException;
-
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.Envelope;
 
 import se.uu.ub.cora.testutils.mcr.MethodCallRecorder;
 import se.uu.ub.cora.testutils.mrv.MethodReturnValues;
 
-public class RabbitMqConnectionFactorySpy extends ConnectionFactory {
+public class EnvelopeSpy extends Envelope {
 
 	public MethodCallRecorder MCR = new MethodCallRecorder();
 	public MethodReturnValues MRV = new MethodReturnValues();
 
-	public RabbitMqConnectionFactorySpy() {
+	public EnvelopeSpy() {
+		super(0L, false, null, null);
 		MCR.useMRV(MRV);
-		MRV.setDefaultReturnValuesSupplier("newConnection", RabbitMqConnectionSpy::new);
+		MRV.setDefaultReturnValuesSupplier("getDeliveryTag", () -> 10L);
 	}
 
 	@Override
-	public void setHost(String host) {
-		MCR.addCall("host", host);
+	public long getDeliveryTag() {
+		return (long) MCR.addCallAndReturnFromMRV();
 	}
 
-	@Override
-	public void setPort(int port) {
-		MCR.addCall("port", port);
-	}
-
-	@Override
-	public void setVirtualHost(String virtualHost) {
-		MCR.addCall("virtualHost", virtualHost);
-	}
-
-	@Override
-	public Connection newConnection() throws IOException, TimeoutException {
-		return (Connection) MCR.addCallAndReturnFromMRV();
-	}
 }

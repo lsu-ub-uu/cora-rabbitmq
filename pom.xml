@@ -18,22 +18,23 @@
 	</parent>
 
 	<artifactId>rabbitmq</artifactId>
-	<version>2.13-SNAPSHOT</version>
+	<version>3.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>rabbitmq</name>
 
 	<properties>
-		<messaging.version>2.11.0</messaging.version>
+		<messaging.version>3.0-SNAPSHOT</messaging.version>
 		<logger.version>2.10.0</logger.version>
 		<rabbitMQ.version>5.19.0</rabbitMQ.version>
+		<testutils.version>1.11.0</testutils.version>
 	</properties>
 
 	<scm>
 		<connection>scm:git:https://github.com/lsu-ub-uu/cora-rabbitmq.git</connection>
 		<developerConnection>scm:git:https://github.com/lsu-ub-uu/cora-rabbitmq.git</developerConnection>
 		<url>https://github.com/lsu-ub-uu/cora-rabbitmq.git</url>
-	  <tag>HEAD</tag>
-  </scm>
+		<tag>HEAD</tag>
+	</scm>
 
 	<dependencies>
 		<dependency>
@@ -54,10 +55,16 @@
 			<version>${logger.version}</version>
 			<scope>provided</scope>
 		</dependency>
-				<dependency>
+		<dependency>
 			<groupId>com.rabbitmq</groupId>
 			<artifactId>amqp-client</artifactId>
 			<version>${rabbitMQ.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>se.uu.ub.cora</groupId>
+			<artifactId>testutils</artifactId>
+			<version>${testutils.version}</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 </project>

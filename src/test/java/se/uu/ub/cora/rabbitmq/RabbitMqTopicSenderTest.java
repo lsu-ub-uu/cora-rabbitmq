@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Uppsala University Library
+ * Copyright 2019, 2023 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -22,6 +22,8 @@ package se.uu.ub.cora.rabbitmq;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,7 +33,7 @@ import org.testng.annotations.Test;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.BasicProperties;
 
-import se.uu.ub.cora.messaging.AmqpMessageRoutingInfo;
+import se.uu.ub.cora.messaging.AmqpMessageSenderRoutingInfo;
 import se.uu.ub.cora.messaging.MessageSender;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
 import se.uu.ub.cora.rabbitmq.spy.RabbitMqChannelSpy;
@@ -40,17 +42,24 @@ import se.uu.ub.cora.rabbitmq.spy.RabbitMqConnectionSpy;
 
 public class RabbitMqTopicSenderTest {
 
+	private static final String SOME_HOST = "someHostname";
+	private static final int SOME_PORT = 8080;
+	private static final String SOME_VHOST = "someVirtualHost";
+	private static final String SOME_EXCHANGE = "someExchange";
+	private static final String SOME_ROUTING_KEY = "someRoutingKey";
+
 	private RabbitMqConnectionFactorySpy rabbitFactorySpy;
-	private AmqpMessageRoutingInfo routingInfo;
+	private AmqpMessageSenderRoutingInfo routingInfo;
 	private RabbitMqTopicSender messageSender;
 
 	@BeforeMethod
 	public void beforeMethod() {
 		rabbitFactorySpy = new RabbitMqConnectionFactorySpy();
-		routingInfo = new AmqpMessageRoutingInfo("messaging.alvin-portal.org", "5672", "alvin",
-				"index", "alvin.updates.#");
+		routingInfo = new AmqpMessageSenderRoutingInfo(SOME_HOST, SOME_PORT, SOME_VHOST,
+				SOME_EXCHANGE, SOME_ROUTING_KEY);
+
 		messageSender = RabbitMqTopicSender
-				.usingConnectionFactoryAndMessageRoutingInfo(rabbitFactorySpy, routingInfo);
+				.usingConnectionFactoryAndMessageRoutingInfoSender(rabbitFactorySpy, routingInfo);
 	}
 
 	@Test
@@ -60,30 +69,30 @@ public class RabbitMqTopicSenderTest {
 
 	@Test
 	public void testSetConnectionFactoryChannel() throws Exception {
-		int portAsInt = Integer.valueOf(routingInfo.port).intValue();
-
-		assertEquals(rabbitFactorySpy.host, routingInfo.hostname);
-		assertEquals(rabbitFactorySpy.port, portAsInt);
-		assertEquals(rabbitFactorySpy.virtualHost, routingInfo.virtualHost);
+		rabbitFactorySpy.MCR.assertParameters("setHost", 0, SOME_HOST);
+		rabbitFactorySpy.MCR.assertParameters("setPort", 0, Integer.valueOf(SOME_PORT));
+		rabbitFactorySpy.MCR.assertParameters("setVirtualHost", 0, SOME_VHOST);
 	}
 
 	@Test
 	public void testSendMessageCreatesAConnection() throws Exception {
-		assertEquals(rabbitFactorySpy.createdConnections.size(), 0);
+		rabbitFactorySpy.MCR.assertMethodNotCalled("newConnection");
 		messageSender.sendMessage(null, "");
-		assertEquals(rabbitFactorySpy.createdConnections.size(), 1);
+		rabbitFactorySpy.MCR.assertMethodWasCalled("newConnection");
 	}
 
 	@Test(expectedExceptions = MessagingInitializationException.class, expectedExceptionsMessageRegExp = ""
 			+ "Error from RabbitMqConnectionFactorySpy on newConnection")
 	public void testExceptionHandlingOnSendMessage() throws Exception {
-		rabbitFactorySpy.throwErrorOnSendMessage = true;
+		rabbitFactorySpy.MRV.setAlwaysThrowException("newConnection",
+				new RuntimeException("Error from RabbitMqConnectionFactorySpy on newConnection"));
 		messageSender.sendMessage(null, "");
 	}
 
 	@Test
 	public void testExceptionHandlingOnSendMessageSendsAlongInitialException() throws Exception {
-		rabbitFactorySpy.throwErrorOnSendMessage = true;
+		rabbitFactorySpy.MRV.setAlwaysThrowException("newConnection",
+				new RuntimeException("Error from RabbitMqConnectionFactorySpy on newConnection"));
 		try {
 			messageSender.sendMessage(null, "");
 		} catch (Exception e) {
@@ -94,18 +103,31 @@ public class RabbitMqTopicSenderTest {
 	@Test
 	public void testSendMessageCreatesChannel() throws Exception {
 		messageSender.sendMessage(null, "");
-		RabbitMqConnectionSpy firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
-		assertEquals(firstCreatedConnection.createdChannels.size(), 1);
+		RabbitMqConnectionSpy connection = getConnection();
+		connection.MCR.assertParameters("createChannel", 0);
+		connection.MCR.assertNumberOfCallsToMethod("createChannel", 1);
+	}
+
+	private RabbitMqConnectionSpy getConnection() {
+		RabbitMqConnectionSpy connection = (RabbitMqConnectionSpy) rabbitFactorySpy.MCR
+				.getReturnValue("newConnection", 0);
+		return connection;
 	}
 
 	@Test
 	public void testPublishEmptyMessage() throws Exception {
-		String message = "";
-		Map<String, Object> headers = new HashMap<>();
-		messageSender.sendMessage(headers, message);
-		RabbitMqConnectionSpy firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
-		RabbitMqChannelSpy firstCreatedChannel = firstCreatedConnection.createdChannels.get(0);
-		assertEquals(firstCreatedChannel.publishedMessages.size(), 1);
+
+		messageSender.sendMessage(Collections.emptyMap(), "");
+
+		RabbitMqChannelSpy channel = getChannel();
+
+		channel.MCR.assertParameters("basicPublish", 0, SOME_EXCHANGE, SOME_ROUTING_KEY);
+
+	}
+
+	private RabbitMqChannelSpy getChannel() {
+		RabbitMqConnectionSpy connection = getConnection();
+		return (RabbitMqChannelSpy) connection.MCR.getReturnValue("createChannel", 0);
 	}
 
 	@Test
@@ -113,17 +135,13 @@ public class RabbitMqTopicSenderTest {
 		String message = "{\"pid\":\"alvin-place:1\",\"routingKey\":\"alvin.updates.place\","
 				+ "\"action\":\"UPDATE\",\"dsId\":null,"
 				+ "\"headers\":{\"ACTION\":\"UPDATE\",\"PID\":\"alvin-place:1\"}}";
+
 		messageSender.sendMessage(null, message);
-		Map<String, Object> publishedMessage = getFirstPublishedMessage();
 
-		assertEquals(publishedMessage.get("body"), message.getBytes());
-	}
+		RabbitMqChannelSpy channel = getChannel();
 
-	private Map<String, Object> getFirstPublishedMessage() {
-		RabbitMqConnectionSpy firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
-		RabbitMqChannelSpy firstCreatedChannel = firstCreatedConnection.createdChannels.get(0);
-		Map<String, Object> publishedMessage = firstCreatedChannel.publishedMessages.get(0);
-		return publishedMessage;
+		channel.MCR.assertParameterAsEqual("basicPublish", 0, "body",
+				message.getBytes(StandardCharsets.UTF_8));
 	}
 
 	@Test
@@ -133,14 +151,15 @@ public class RabbitMqTopicSenderTest {
 		headers.put("ACTION", "UPDATE");
 		headers.put("PID", "alvin-place:1");
 		headers.put("messageSentFrom", "Cora");
+
 		messageSender.sendMessage(headers, "");
 
-		Map<String, Object> publishedMessage = getFirstPublishedMessage();
+		RabbitMqChannelSpy channel = getChannel();
+		BasicProperties publishedProps = (BasicProperties) channel.MCR
+				.getValueForMethodNameAndCallNumberAndParameterName("basicPublish", 0, "props");
 
-		BasicProperties publishedProps = (BasicProperties) publishedMessage.get("props");
 		assertTrue(publishedProps instanceof AMQP.BasicProperties);
 		Map<String, Object> publishedHeaders = publishedProps.getHeaders();
-		assertEquals(publishedProps.getContentType(), "application/json");
 		assertEquals(publishedHeaders.get("__TypeId__"), headers.get("__TypeId__"));
 		assertEquals(publishedHeaders.get("ACTION"), headers.get("ACTION"));
 		assertEquals(publishedHeaders.get("PID"), headers.get("PID"));
@@ -148,25 +167,14 @@ public class RabbitMqTopicSenderTest {
 	}
 
 	@Test
-	public void testPublishTopic() throws Exception {
-		messageSender.sendMessage(null, "");
-		Map<String, Object> publishedMessage = getFirstPublishedMessage();
-		assertEquals(publishedMessage.get("routingKey"), routingInfo.routingKey);
-	}
-
-	@Test
-	public void testPublishExchangeName() throws Exception {
-		messageSender.sendMessage(null, "");
-		Map<String, Object> publishedMessage = getFirstPublishedMessage();
-		assertEquals(publishedMessage.get("exchange"), routingInfo.exchange);
-	}
-
-	@Test
 	public void testCloseConnection() throws Exception {
+
 		messageSender.sendMessage(null, "");
-		RabbitMqConnectionSpy firstCreatedConnection = rabbitFactorySpy.createdConnections.get(0);
-		RabbitMqChannelSpy firstCreatedChannel = firstCreatedConnection.createdChannels.get(0);
-		assertEquals(firstCreatedChannel.closeHasBeenCalled, true);
-		assertEquals(firstCreatedConnection.closeHasBeenCalled, true);
+
+		RabbitMqConnectionSpy connection = getConnection();
+		connection.MCR.assertMethodWasCalled("close");
+
+		RabbitMqChannelSpy channel = getChannel();
+		channel.MCR.assertMethodWasCalled("close");
 	}
 }

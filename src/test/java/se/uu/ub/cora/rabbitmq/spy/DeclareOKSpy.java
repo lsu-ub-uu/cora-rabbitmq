@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, 2023 Uppsala University Library
+ * Copyright 2023 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -16,29 +16,47 @@
  *     You should have received a copy of the GNU General Public License
  *     along with Cora.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package se.uu.ub.cora.rabbitmq.spy;
 
-import java.util.Map;
+import com.rabbitmq.client.AMQP.Queue.DeclareOk;
 
-import se.uu.ub.cora.messaging.MessageReceiver;
-import se.uu.ub.cora.testutils.mcr.MethodCallRecorder;
-import se.uu.ub.cora.testutils.mrv.MethodReturnValues;
+public class DeclareOKSpy implements DeclareOk {
 
-public class MessageReceiverSpy implements MessageReceiver {
-	public MethodCallRecorder MCR = new MethodCallRecorder();
-	public MethodReturnValues MRV = new MethodReturnValues();
-
-	public MessageReceiverSpy() {
-		MCR.useMRV(MRV);
+	@Override
+	public int protocolClassId() {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 	@Override
-	public void receiveMessage(Map<String, String> headers, String message) {
-		MCR.addCall("headers", headers, "message", message);
+	public int protocolMethodId() {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 	@Override
-	public void topicClosed() {
-		MCR.addCall();
+	public String protocolMethodName() {
+		// TODO Auto-generated method stub
+		return null;
 	}
+
+	@Override
+	public String getQueue() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public int getMessageCount() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public int getConsumerCount() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
 }

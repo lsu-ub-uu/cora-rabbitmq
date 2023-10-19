@@ -19,9 +19,6 @@
 package se.uu.ub.cora.rabbitmq.spy;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
@@ -53,12 +50,20 @@ import com.rabbitmq.client.ReturnListener;
 import com.rabbitmq.client.ShutdownListener;
 import com.rabbitmq.client.ShutdownSignalException;
 
+import se.uu.ub.cora.testutils.mcr.MethodCallRecorder;
+import se.uu.ub.cora.testutils.mrv.MethodReturnValues;
+
 public class RabbitMqChannelSpy implements Channel {
 
-	public List<Map<String, Object>> publishedMessages = new ArrayList<>();
-	public boolean closeHasBeenCalled = false;
-	public List<Map<String, Object>> queueBindings = new ArrayList<>();
-	public List<Map<String, Object>> basicConsumes = new ArrayList<>();
+	public MethodCallRecorder MCR = new MethodCallRecorder();
+	public MethodReturnValues MRV = new MethodReturnValues();
+
+	public RabbitMqChannelSpy() {
+		MCR.useMRV(MRV);
+		MRV.setDefaultReturnValuesSupplier("queueBind", BindOkSpy::new);
+		MRV.setDefaultReturnValuesSupplier("basicConsume", String::new);
+		MRV.setDefaultReturnValuesSupplier("queueDeclare", DeclareOKSpy::new);
+	}
 
 	@Override
 	public void addShutdownListener(ShutdownListener listener) {
@@ -104,7 +109,7 @@ public class RabbitMqChannelSpy implements Channel {
 
 	@Override
 	public void close() throws IOException, TimeoutException {
-		closeHasBeenCalled = true;
+		MCR.addCall();
 	}
 
 	@Override
@@ -207,12 +212,7 @@ public class RabbitMqChannelSpy implements Channel {
 	@Override
 	public void basicPublish(String exchange, String routingKey, BasicProperties props, byte[] body)
 			throws IOException {
-		Map<String, Object> publishedMessage = new HashMap<>();
-		publishedMessage.put("exchange", exchange);
-		publishedMessage.put("routingKey", routingKey);
-		publishedMessage.put("props", props);
-		publishedMessage.put("body", body);
-		publishedMessages.add(publishedMessage);
+		MCR.addCall("exchange", exchange, "routingKey", routingKey, "props", props, "body", body);
 	}
 
 	@Override
@@ -369,8 +369,8 @@ public class RabbitMqChannelSpy implements Channel {
 
 	@Override
 	public com.rabbitmq.client.AMQP.Queue.DeclareOk queueDeclare() throws IOException {
-		RabbitDeclareOkSpy declareOk = new RabbitDeclareOkSpy();
-		return declareOk;
+		return (com.rabbitmq.client.AMQP.Queue.DeclareOk) MCR.addCallAndReturnFromMRV();
+
 	}
 
 	@Override
@@ -418,12 +418,8 @@ public class RabbitMqChannelSpy implements Channel {
 	@Override
 	public com.rabbitmq.client.AMQP.Queue.BindOk queueBind(String queue, String exchange,
 			String routingKey) throws IOException {
-		Map<String, Object> binding = new HashMap<>();
-		binding.put("queue", queue);
-		binding.put("exchange", exchange);
-		binding.put("routingKey", routingKey);
-		queueBindings.add(binding);
-		return null;
+		return (com.rabbitmq.client.AMQP.Queue.BindOk) MCR.addCallAndReturnFromMRV("queue", queue,
+				"exchange", exchange, "routingKey", routingKey);
 	}
 
 	@Override
@@ -468,7 +464,7 @@ public class RabbitMqChannelSpy implements Channel {
 
 	@Override
 	public void basicAck(long deliveryTag, boolean multiple) throws IOException {
-		// TODO Auto-generated method stub
+		MCR.addCall("deliveryTag", deliveryTag, "multiple", multiple);
 
 	}
 
@@ -521,15 +517,9 @@ public class RabbitMqChannelSpy implements Channel {
 	@Override
 	public String basicConsume(String queue, boolean autoAck, DeliverCallback deliverCallback,
 			CancelCallback cancelCallback) throws IOException {
-		Map<String, Object> basicConsume = new HashMap<>();
-		basicConsume.put("queue", queue);
-		basicConsume.put("autoAck", autoAck);
-		basicConsume.put("deliverCallback", deliverCallback);
-		basicConsume.put("cancelCallback", cancelCallback);
+		return (String) MCR.addCallAndReturnFromMRV("queue", queue, "autoAck", autoAck,
+				"deliverCallback", deliverCallback, "cancelCallback", cancelCallback);
 
-		basicConsumes.add(basicConsume);
-
-		return null;
 	}
 
 	@Override
