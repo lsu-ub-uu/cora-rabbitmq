@@ -137,20 +137,6 @@ public class RabbitMqTopicListenerTest {
 		return connection;
 	}
 
-	// @Test
-	// public void testBindingQueue() throws Exception {
-	// RabbitMqChannelSpy channelSpy = null;
-	//
-	// listener.listen(messageReceiverSpy);
-	// RabbitMqConnectionSpy firstCreatedConnection = getCreatedRabbitConnection(0);
-	// channelSpy = getRabbitChannel(0, firstCreatedConnection);
-	//
-	// assertEquals(channelSpy.queueBindings.size(), 1);
-	// assertEquals(channelSpy.queueBindings.get(0).get("queue"), "channelBinding");
-	// assertEquals(channelSpy.queueBindings.get(0).get("exchange"), routingInfo.exchange);
-	// assertEquals(channelSpy.queueBindings.get(0).get("routingKey"), routingInfo.routingKey);
-	// }
-
 	private RabbitMqChannelSpy getChannel() {
 		RabbitMqConnectionSpy connection = getConnection();
 		return (RabbitMqChannelSpy) connection.MCR.getReturnValue("createChannel", 0);
@@ -165,22 +151,6 @@ public class RabbitMqTopicListenerTest {
 
 		boolean autoAck = false;
 		channel.MCR.assertParameters("basicConsume", 0, SOME_QUEUE, autoAck);
-
-		Object valueForMethodNameAndCallNumberAndParameterName = channel.MCR
-				.getValueForMethodNameAndCallNumberAndParameterName("basicConsume", 0,
-						"deliverCallback");
-
-		// RabbitMqConnectionSpy firstCreatedConnection = getCreatedRabbitConnection(0);
-		// channelSpy = getRabbitChannel(0, firstCreatedConnection);
-		//
-		// assertEquals(channelSpy.basicConsumes.size(), 1);
-		// assertEquals(channelSpy.basicConsumes.get(0).get("queue"), "channelBinding");
-		// assertEquals(channelSpy.basicConsumes.get(0).get("autoAck"), true);
-
-		// assertTrue(
-		// channelSpy.basicConsumes.get(0).get("deliverCallback") instanceof DeliverCallback);
-		// assertTrue(channelSpy.basicConsumes.get(0).get("cancelCallback") instanceof
-		// CancelCallback);
 	}
 
 	@Test
@@ -282,7 +252,6 @@ public class RabbitMqTopicListenerTest {
 			cancelCallback.handle("consumerTag");
 			Assert.fail("Error should have been thrown");
 		} catch (Exception e) {
-			// TODO: handle exception
 			assertEquals(e.getMessage(),
 					"Error closing channel and connection in RabbitMqTopicListener");
 			assertSame(e.getCause(), errorToThrow);

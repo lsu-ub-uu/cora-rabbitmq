@@ -41,8 +41,8 @@ public class RabbitMqMessagingFactory implements MessagingFactory {
 	}
 
 	@Override
-	public MessageListener factorTopicMessageListener(AmqpMessageListenerRoutingInfo routingInfo) {
-		return RabbitMqTopicListener
-				.usingConnectionFactoryAndMessageRoutingInfo(new ConnectionFactory(), routingInfo);
+	public MessageListener factorTopicMessageListener(MessageRoutingInfo routingInfo) {
+		return RabbitMqTopicListener.usingConnectionFactoryAndMessageRoutingInfo(
+				new ConnectionFactory(), (AmqpMessageListenerRoutingInfo) routingInfo);
 	}
 }

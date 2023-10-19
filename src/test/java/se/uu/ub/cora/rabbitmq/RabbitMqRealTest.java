@@ -28,50 +28,48 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import se.uu.ub.cora.messaging.AmqpMessageListenerRoutingInfo;
+import se.uu.ub.cora.messaging.AmqpMessageSenderRoutingInfo;
 import se.uu.ub.cora.messaging.MessageListener;
 import se.uu.ub.cora.messaging.MessageReceiver;
 import se.uu.ub.cora.messaging.MessageSender;
 
 public class RabbitMqRealTest {
 
-	private AmqpMessageListenerRoutingInfo routingInfo;
+	private AmqpMessageSenderRoutingInfo routingInfoSender;
+	private AmqpMessageListenerRoutingInfo routingInfoListener;
 	private RabbitMqMessagingFactory factory;
 	private MessageSender messageSender;
 	private MessageListener messageListener;
 	private MessageReceiver messageReceiver;
 	private MessageReceiver messageReceiver2;
-	private MessageListener messageListener2;
+	// private MessageListener messageListener2;
 
 	@BeforeMethod
 	public void beforeMethod() {
 		factory = new RabbitMqMessagingFactory();
 		String virtualHost = "/";
 		String exchange = "workerE";
+		String queue = "workerQ";
 		String routingKey = "";
-		routingInfo = new AmqpMessageListenerRoutingInfo("systemone-rabbitmq", "5672", virtualHost,
-				exchange, routingKey);
-		// routingInfo = new MessageRoutingInfo("systemone-rabbitmq", "5672", "/", "amq.direct",
-		// "alvin.updates.#");
-		// routingInfo = new MessageRoutingInfo("systemone-rabbitmq", "5672", "routingKey");
+		routingInfoListener = new AmqpMessageListenerRoutingInfo("systemone-rabbitmq", 5672,
+				virtualHost, queue);
+		routingInfoSender = new AmqpMessageSenderRoutingInfo("systemone-rabbitmq", 5672,
+				virtualHost, exchange, routingKey);
 
-		messageSender = factory.factorTopicMessageSender(routingInfo);
-		messageListener = factory.factorTopicMessageListener(routingInfo);
-		messageListener2 = factory.factorTopicMessageListener(routingInfo);
+		messageSender = factory.factorTopicMessageSender(routingInfoSender);
+		messageListener = factory.factorTopicMessageListener(routingInfoListener);
+		// messageListener2 = factory.factorTopicMessageListener(routingInfoListener);
 		messageReceiver = new MessageReceiver() {
 			@Override
 			public void topicClosed() {
-				// TODO Auto-generated method stub
-
 				System.out.println("Topic closed... ");
 			}
 
 			@Override
 			public void receiveMessage(Map<String, String> headers, String message) {
-				// TODO Auto-generated method stub
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				System.out.println("worker_SLOW: h:" + headers + " m:" + message);
@@ -80,18 +78,14 @@ public class RabbitMqRealTest {
 		messageReceiver2 = new MessageReceiver() {
 			@Override
 			public void topicClosed() {
-				// TODO Auto-generated method stub
-
 				System.out.println("Topic closed... ");
 			}
 
 			@Override
 			public void receiveMessage(Map<String, String> headers, String message) {
-				// TODO Auto-generated method stub
 				try {
 					Thread.sleep(500);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				System.out.println("worker_FAST: h:" + headers + " m:" + message);
@@ -99,7 +93,7 @@ public class RabbitMqRealTest {
 		};
 	}
 
-	@Test
+	@Test(enabled = false)
 	public void testImplementsMessageSender() throws Exception {
 		assertTrue(messageSender instanceof MessageSender);
 		System.out.println("adsf");
@@ -116,8 +110,6 @@ public class RabbitMqRealTest {
 
 		Thread.sleep(10000);
 		System.out.println("slept 1");
-		// Thread.sleep(1000);
-		// System.out.println("slept 2");
 
 	}
 

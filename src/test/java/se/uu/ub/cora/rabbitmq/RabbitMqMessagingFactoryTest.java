@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Uppsala University Library
+ * Copyright 2019, 2023 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -40,15 +40,14 @@ public class RabbitMqMessagingFactoryTest {
 	private static final String SOME_EXCHANGE = "someExchange";
 	private static final String SOME_ROUTING_KEY = "someRoutingKey";
 
-	AmqpMessageListenerRoutingInfo routingInfo;
+	AmqpMessageListenerRoutingInfo routingInfoListener;
+	private AmqpMessageSenderRoutingInfo routingInfoSender;
 
 	@BeforeTest
 	public void beforeTest() {
-		// routingInfo = new AmqpMessageListenerRoutingInfo("messaging.alvin-portal.org", "5672",
-		// "alvin", "index", "alvin.updates.#");
-		new AmqpMessageSenderRoutingInfo(SOME_HOST, SOME_PORT, SOME_VHOST, SOME_EXCHANGE,
-				SOME_ROUTING_KEY);
-		routingInfo = new AmqpMessageListenerRoutingInfo(SOME_HOST, SOME_PORT, SOME_VHOST,
+		routingInfoSender = new AmqpMessageSenderRoutingInfo(SOME_HOST, SOME_PORT, SOME_VHOST,
+				SOME_EXCHANGE, SOME_ROUTING_KEY);
+		routingInfoListener = new AmqpMessageListenerRoutingInfo(SOME_HOST, SOME_PORT, SOME_VHOST,
 				SOME_QUEUE);
 	}
 
@@ -64,11 +63,11 @@ public class RabbitMqMessagingFactoryTest {
 		RabbitMqMessagingFactory factory = new RabbitMqMessagingFactory();
 
 		RabbitMqTopicSender messageSender = (RabbitMqTopicSender) factory
-				.factorTopicMessageSender(routingInfo);
+				.factorTopicMessageSender(routingInfoSender);
 
 		assertTrue(messageSender instanceof RabbitMqTopicSender);
 		assertTrue(messageSender.onlyForTestGetConnectionFactory() instanceof ConnectionFactory);
-		assertEquals(messageSender.onlyForTestGetMessageRoutingInfo(), routingInfo);
+		assertEquals(messageSender.onlyForTestGetMessageRoutingInfo(), routingInfoSender);
 	}
 
 	@Test
@@ -76,10 +75,10 @@ public class RabbitMqMessagingFactoryTest {
 		RabbitMqMessagingFactory factory = new RabbitMqMessagingFactory();
 
 		RabbitMqTopicListener messageListener = (RabbitMqTopicListener) factory
-				.factorTopicMessageListener(routingInfo);
+				.factorTopicMessageListener(routingInfoListener);
 
 		assertTrue(messageListener instanceof RabbitMqTopicListener);
 		assertTrue(messageListener.onlyForTestGetConnectionFactory() instanceof ConnectionFactory);
-		assertEquals(messageListener.onlyForTestGetMessageRoutingInfo(), routingInfo);
+		assertEquals(messageListener.onlyForTestGetMessageRoutingInfo(), routingInfoListener);
 	}
 }
