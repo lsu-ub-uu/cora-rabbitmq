@@ -96,7 +96,7 @@ public class RabbitMqRealTest {
 	@Test(enabled = false)
 	public void testImplementsMessageSender() throws Exception {
 		assertTrue(messageSender instanceof MessageSender);
-		System.out.println("adsf");
+		System.out.println("Start listening messages");
 
 		HashMap<String, Object> headers = new HashMap<>();
 		headers.put("id", "binary:3232");
