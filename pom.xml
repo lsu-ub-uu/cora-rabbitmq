@@ -23,9 +23,9 @@
 	<name>rabbitmq</name>
 
 	<properties>
-		<messaging.version>3.0-SNAPSHOT</messaging.version>
+		<messaging.version>3.0.0</messaging.version>
 		<logger.version>2.10.0</logger.version>
-		<rabbitMQ.version>5.19.0</rabbitMQ.version>
+		<rabbitMQ.version>5.20.0</rabbitMQ.version>
 		<testutils.version>1.11.0</testutils.version>
 	</properties>
 
