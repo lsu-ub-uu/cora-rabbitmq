@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, 2023 Uppsala University Library
+ * Copyright 2019, 2023, 2025 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
+import com.rabbitmq.client.AMQP.Queue.DeclareOk;
 import com.rabbitmq.client.CancelCallback;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -61,12 +62,7 @@ public class RabbitMqTopicListener implements MessageListener {
 		try {
 			tryTolisten(messageReceiver);
 		} catch (Exception e) {
-			String errorMessage = "Error trying to listen rabbitMQ queue on "
-					+ "{0}:{1}, vhost: {2} and queue: {3}";
-
-			throw new MessagingInitializationException(MessageFormat.format(errorMessage,
-					routingInfo.hostname, String.valueOf(routingInfo.port), routingInfo.virtualHost,
-					routingInfo.queueName), e);
+			throwCorrectErrorMessage(e);
 		}
 	}
 
@@ -75,15 +71,21 @@ public class RabbitMqTopicListener implements MessageListener {
 		connection = connectionFactory.newConnection();
 		Channel channel = connection.createChannel();
 
-		///
-		/// MOVE TO rabbit SERVER configuration
-		// channel.exchangeDeclare(routingInfo.exchange, BuiltinExchangeType.DIRECT, true);
-		// channel.queueDeclare("workerQ", true, false, false, null);
-		// channel.queueBind("workerQ", routingInfo.exchange, routingInfo.routingKey);
-		// channel.basicQos(1);
-		///
-
+		if (autoCreateQueue()) {
+			createNewAutoCreadedChannel(channel);
+		}
 		startListening(messageReceiver, channel);
+	}
+
+	private void createNewAutoCreadedChannel(Channel channel) throws IOException {
+		DeclareOk queueDeclare = channel.queueDeclare();
+		String queueName = queueDeclare.getQueue();
+		channel.queueBind(queueName, routingInfo.exchange, routingInfo.routingKey);
+		routingInfo.queueName = queueName;
+	}
+
+	private boolean autoCreateQueue() {
+		return routingInfo.exchange != null;
 	}
 
 	private void setupConnectionFactory() {
@@ -94,37 +96,14 @@ public class RabbitMqTopicListener implements MessageListener {
 
 	private void startListening(MessageReceiver messageReceiver, Channel channel)
 			throws IOException {
-		// String queueName = bindQueue(channel);
-		// System.out.println(queueName);
-		// channel.queueDeclare("TASK_QUEUE_NAME", true, false, false, null);
-
-		// needs to be possible to change
 		boolean autoAck = false;
 		DeliverCallback deliverCallback = getDeliverCallback(messageReceiver, channel);
 		CancelCallback cancelCallback = getCancelCallback(messageReceiver, channel);
-
 		channel.basicConsume(routingInfo.queueName, autoAck, deliverCallback, cancelCallback);
-
-		// channel.basicConsume("TASK_QUEUE_NAME", autoAck, deliverCallback, cancelCallback);
-		// try {
-		// Thread.sleep(10000);
-		// } catch (InterruptedException e) {
-		// // TODO Auto-generated catch block
-		// e.printStackTrace();
-		// }
 	}
 
-	// private String bindQueue(Channel channel) throws IOException {
-	// String queueName = channel.queueDeclare().getQueue();
-	// // channel.basicQos(1);
-	// // channel.queueDeclare(TASK_QUEUE_NAME, true, false, false, null);
-	// channel.queueBind(queueName, messagingRoutingInfo.exchange,
-	// messagingRoutingInfo.routingKey);
-	// return queueName;
-	// }
-
 	private DeliverCallback getDeliverCallback(MessageReceiver messageReceiver, Channel channel) {
-		return (consumerTag, delivery) -> {
+		return (_, delivery) -> {
 			Map<String, String> headers = getHeadersFromDelivery(delivery);
 			String message = getMessageFromDelivery(delivery);
 			messageReceiver.receiveMessage(headers, message);
@@ -156,7 +135,7 @@ public class RabbitMqTopicListener implements MessageListener {
 	}
 
 	private CancelCallback getCancelCallback(MessageReceiver messageReceiver, Channel channel) {
-		return consumerTag -> {
+		return _ -> {
 			messageReceiver.topicClosed();
 			tryToCloseConnection(channel);
 		};
@@ -170,6 +149,31 @@ public class RabbitMqTopicListener implements MessageListener {
 			throw new RuntimeException(
 					"Error closing channel and connection in RabbitMqTopicListener", e);
 		}
+	}
+
+	private void throwCorrectErrorMessage(Exception e) {
+		if (autoCreateQueue()) {
+			throwErrorForAutoCreateQueue(e);
+		}
+		throwErrorForKnownQueue(e);
+	}
+
+	private void throwErrorForAutoCreateQueue(Exception e) {
+		String errorMessage = "Error trying to listen rabbitMQ queue on "
+				+ "{0}:{1}, vhost: {2}, exchange: {3} and routingKey: {4}";
+
+		throw new MessagingInitializationException(MessageFormat.format(errorMessage,
+				routingInfo.hostname, String.valueOf(routingInfo.port), routingInfo.virtualHost,
+				routingInfo.exchange, routingInfo.routingKey), e);
+	}
+
+	private void throwErrorForKnownQueue(Exception e) {
+		String errorMessage = "Error trying to listen rabbitMQ queue on "
+				+ "{0}:{1}, vhost: {2} and queue: {3}";
+
+		throw new MessagingInitializationException(MessageFormat.format(errorMessage,
+				routingInfo.hostname, String.valueOf(routingInfo.port), routingInfo.virtualHost,
+				routingInfo.queueName), e);
 	}
 
 	ConnectionFactory onlyForTestGetConnectionFactory() {

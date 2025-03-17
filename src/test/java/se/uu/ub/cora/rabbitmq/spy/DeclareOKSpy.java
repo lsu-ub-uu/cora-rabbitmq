@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Uppsala University Library
+ * Copyright 2023, 2025 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -21,7 +21,17 @@ package se.uu.ub.cora.rabbitmq.spy;
 
 import com.rabbitmq.client.AMQP.Queue.DeclareOk;
 
+import se.uu.ub.cora.testutils.mcr.MethodCallRecorder;
+import se.uu.ub.cora.testutils.mrv.MethodReturnValues;
+
 public class DeclareOKSpy implements DeclareOk {
+	public MethodCallRecorder MCR = new MethodCallRecorder();
+	public MethodReturnValues MRV = new MethodReturnValues();
+
+	public DeclareOKSpy() {
+		MCR.useMRV(MRV);
+		MRV.setDefaultReturnValuesSupplier("getQueue", () -> "someQueueName");
+	}
 
 	@Override
 	public int protocolClassId() {
@@ -43,8 +53,7 @@ public class DeclareOKSpy implements DeclareOk {
 
 	@Override
 	public String getQueue() {
-		// TODO Auto-generated method stub
-		return null;
+		return (String) MCR.addCallAndReturnFromMRV();
 	}
 
 	@Override

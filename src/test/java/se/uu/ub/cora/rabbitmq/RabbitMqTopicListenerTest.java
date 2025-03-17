@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, 2023 Uppsala University Library
+ * Copyright 2019, 2023, 2025 Uppsala University Library
  *
  * This file is part of Cora.
  *
@@ -44,6 +44,7 @@ import se.uu.ub.cora.messaging.AmqpMessageListenerRoutingInfo;
 import se.uu.ub.cora.messaging.MessageListener;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
 import se.uu.ub.cora.rabbitmq.spy.BasicPropertiesSpy;
+import se.uu.ub.cora.rabbitmq.spy.DeclareOKSpy;
 import se.uu.ub.cora.rabbitmq.spy.EnvelopeSpy;
 import se.uu.ub.cora.rabbitmq.spy.MessageReceiverSpy;
 import se.uu.ub.cora.rabbitmq.spy.RabbitMqChannelSpy;
@@ -76,37 +77,35 @@ public class RabbitMqTopicListenerTest {
 	}
 
 	@Test
-	public void testInit() throws Exception {
+	public void testInit() {
 		assertSame(listener.onlyForTestGetConnectionFactory(), rabbitConnectionFactorySpy);
 		assertSame(listener.onlyForTestGetMessageRoutingInfo(), routingInfo);
-
 	}
 
 	@Test
-	public void testImplementsMessageListener() throws Exception {
+	public void testImplementsMessageListener() {
 		assertTrue(listener instanceof MessageListener);
 	}
 
 	@Test
-	public void testSetConnectionFactoryChannel() throws Exception {
+	public void testSetConnectionFactoryChannel() {
 
 		listener.listen(messageReceiverSpy);
 
 		rabbitConnectionFactorySpy.MCR.assertParameters("setHost", 0, SOME_HOST);
 		rabbitConnectionFactorySpy.MCR.assertParameters("setPort", 0, SOME_PORT);
 		rabbitConnectionFactorySpy.MCR.assertParameters("setVirtualHost", 0, SOME_VHOST);
-
 	}
 
 	@Test
-	public void testListenerCreatesAConnection() throws Exception {
+	public void testListenerCreatesAConnection() {
 		rabbitConnectionFactorySpy.MCR.assertNumberOfCallsToMethod("newConnection", 0);
 		listener.listen(messageReceiverSpy);
 		rabbitConnectionFactorySpy.MCR.assertNumberOfCallsToMethod("newConnection", 1);
 	}
 
 	@Test
-	public void testExceptionHandlingOnNewConnection() throws Exception {
+	public void testExceptionHandlingOnNewConnection() {
 		String errorMessageSpy = "Error from RabbitMqConnectionFactorySpy on newConnection";
 		RuntimeException returnException = new RuntimeException(errorMessageSpy);
 		rabbitConnectionFactorySpy.MRV.setAlwaysThrowException("newConnection", returnException);
@@ -123,7 +122,7 @@ public class RabbitMqTopicListenerTest {
 	}
 
 	@Test
-	public void testListenMessageCreatesChannel() throws Exception {
+	public void testListenMessageCreatesChannel() {
 		listener.listen(messageReceiverSpy);
 
 		RabbitMqConnectionSpy connection = getConnection();
@@ -132,9 +131,8 @@ public class RabbitMqTopicListenerTest {
 	}
 
 	private RabbitMqConnectionSpy getConnection() {
-		RabbitMqConnectionSpy connection = (RabbitMqConnectionSpy) rabbitConnectionFactorySpy.MCR
+		return (RabbitMqConnectionSpy) rabbitConnectionFactorySpy.MCR
 				.getReturnValue("newConnection", 0);
-		return connection;
 	}
 
 	private RabbitMqChannelSpy getChannel() {
@@ -143,7 +141,7 @@ public class RabbitMqTopicListenerTest {
 	}
 
 	@Test
-	public void testBasicConsumeHasCorrectVAlues() throws Exception {
+	public void testBasicConsumeHasCorrectVAlues() {
 
 		listener.listen(messageReceiverSpy);
 
@@ -154,7 +152,7 @@ public class RabbitMqTopicListenerTest {
 	}
 
 	@Test
-	public void testCallBacksAreHandledAndSentOnToReceiver() throws Exception {
+	public void testCallBacksAreHandledAndSentOnToReceiver() throws IOException {
 		Map<String, Object> headers = new HashMap<>();
 		headers.put("__TypeId__", "epc.messaging.amqp.EPCFedoraMessage");
 		headers.put("ACTION", "UPDATE");
@@ -187,14 +185,12 @@ public class RabbitMqTopicListenerTest {
 	}
 
 	private DeliverCallback getDeliverCallback(RabbitMqChannelSpy channelSpy) {
-		DeliverCallback deliverCallback = (DeliverCallback) channelSpy.MCR
-				.getValueForMethodNameAndCallNumberAndParameterName("basicConsume", 0,
-						"deliverCallback");
-		return deliverCallback;
+		return (DeliverCallback) channelSpy.MCR.getValueForMethodNameAndCallNumberAndParameterName(
+				"basicConsume", 0, "deliverCallback");
 	}
 
 	@Test
-	public void testAcknowledeMessage() throws Exception {
+	public void testAcknowledeMessage() throws IOException {
 		listener.listen(messageReceiverSpy);
 
 		BasicPropertiesSpy properties = new BasicPropertiesSpy();
@@ -213,7 +209,7 @@ public class RabbitMqTopicListenerTest {
 	}
 
 	@Test
-	public void testCallbackCancel() throws Exception {
+	public void testCallbackCancel() throws IOException {
 		listener.listen(messageReceiverSpy);
 
 		RabbitMqChannelSpy channel = getChannel();
@@ -228,14 +224,12 @@ public class RabbitMqTopicListenerTest {
 	}
 
 	private CancelCallback getCancelCallback(RabbitMqChannelSpy channel) {
-		CancelCallback cancelCallback = (CancelCallback) channel.MCR
-				.getValueForMethodNameAndCallNumberAndParameterName("basicConsume", 0,
-						"cancelCallback");
-		return cancelCallback;
+		return (CancelCallback) channel.MCR.getValueForMethodNameAndCallNumberAndParameterName(
+				"basicConsume", 0, "cancelCallback");
 	}
 
 	@Test
-	public void testCallbackCancelErrorClosing() throws Exception {
+	public void testCallbackCancelErrorClosing() {
 		RabbitMqConnectionSpy connectionSpy = new RabbitMqConnectionSpy();
 		RuntimeException errorToThrow = new RuntimeException(
 				"Error from RabbitMqConnectionSpy on close");
@@ -257,6 +251,53 @@ public class RabbitMqTopicListenerTest {
 			assertSame(e.getCause(), errorToThrow);
 
 		}
+	}
+
+	@Test
+	public void testListenAutoCreateQueues() {
+		routingInfo = new AmqpMessageListenerRoutingInfo(SOME_HOST, SOME_PORT, SOME_VHOST,
+				"someExchange", "someRoutingKey");
+		listener = RabbitMqTopicListener.usingConnectionFactoryAndMessageRoutingInfo(
+				rabbitConnectionFactorySpy, routingInfo);
+
+		listener.listen(messageReceiverSpy);
+
+		RabbitMqChannelSpy channel = getChannel();
+		var queueDeclare = (DeclareOKSpy) channel.MCR.assertCalledParametersReturn("queueDeclare");
+		var queueName = (String) queueDeclare.MCR.assertCalledParametersReturn("getQueue");
+		channel.MCR.assertParameters("queueBind", 0, queueName, "someExchange", "someRoutingKey");
+		channel.MCR.assertParameters("basicConsume", 0, queueName, false,
+				getDeliverCallback(channel), getCancelCallback(channel));
+	}
+
+	@Test
+	public void testUnableToDeclareQueue() {
+		RabbitMqChannelSpy channelSpy = setUpChannelSpy();
+		channelSpy.MRV.setDefaultReturnValuesSupplier("queueDeclare", IOException::new);
+
+		routingInfo = new AmqpMessageListenerRoutingInfo(SOME_HOST, SOME_PORT, SOME_VHOST,
+				"someExchange", "someRoutingKey");
+		listener = RabbitMqTopicListener.usingConnectionFactoryAndMessageRoutingInfo(
+				rabbitConnectionFactorySpy, routingInfo);
+
+		try {
+			listener.listen(messageReceiverSpy);
+			fail();
+		} catch (Exception e) {
+			assertTrue(e instanceof MessagingInitializationException);
+			assertEquals(e.getMessage(),
+					"Error trying to listen rabbitMQ queue on someHostname:8080, vhost: "
+							+ "someVirtualHost, exchange: someExchange and routingKey: someRoutingKey");
+		}
+	}
+
+	private RabbitMqChannelSpy setUpChannelSpy() {
+		RabbitMqConnectionSpy connectionSpy = new RabbitMqConnectionSpy();
+		rabbitConnectionFactorySpy.MRV.setDefaultReturnValuesSupplier("newConnection",
+				() -> connectionSpy);
+		RabbitMqChannelSpy channelSpy = new RabbitMqChannelSpy();
+		connectionSpy.MRV.setDefaultReturnValuesSupplier("createChannel", () -> channelSpy);
+		return channelSpy;
 	}
 
 	private void callToDeliverCallback(Delivery delivery, DeliverCallback deliverCallback)
