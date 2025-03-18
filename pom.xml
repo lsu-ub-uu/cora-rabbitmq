@@ -25,6 +25,7 @@
 	<properties>
 		<messaging.version>3.1-SNAPSHOT</messaging.version>
 		<logger.version>2.10.0</logger.version>
+		<logger-spies.version>1.5.0</logger-spies.version>
 		<rabbitMQ.version>5.25.0</rabbitMQ.version>
 		<testutils.version>1.14.0</testutils.version>
 	</properties>
@@ -54,6 +55,12 @@
 			<artifactId>logger</artifactId>
 			<version>${logger.version}</version>
 			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>se.uu.ub.cora</groupId>
+			<artifactId>logger-spies</artifactId>
+			<version>${logger-spies.version}</version>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>com.rabbitmq</groupId>

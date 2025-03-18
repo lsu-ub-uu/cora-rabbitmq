@@ -34,6 +34,8 @@ import com.rabbitmq.client.DeliverCallback;
 import com.rabbitmq.client.Delivery;
 import com.rabbitmq.client.Envelope;
 
+import se.uu.ub.cora.logger.Logger;
+import se.uu.ub.cora.logger.LoggerProvider;
 import se.uu.ub.cora.messaging.AmqpMessageListenerRoutingInfo;
 import se.uu.ub.cora.messaging.MessageListener;
 import se.uu.ub.cora.messaging.MessageReceiver;
@@ -41,7 +43,7 @@ import se.uu.ub.cora.messaging.MessageRoutingInfo;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
 
 public class RabbitMqTopicListener implements MessageListener {
-
+	private Logger log = LoggerProvider.getLoggerForClass(RabbitMqTopicListener.class);
 	private ConnectionFactory connectionFactory;
 	private AmqpMessageListenerRoutingInfo routingInfo;
 	private Connection connection;
@@ -80,6 +82,9 @@ public class RabbitMqTopicListener implements MessageListener {
 	private void createNewAutoCreadedChannel(Channel channel) throws IOException {
 		DeclareOk queueDeclare = channel.queueDeclare();
 		String queueName = queueDeclare.getQueue();
+		log.logInfoUsingMessage(
+				MessageFormat.format("Binding queue: {0} using routingKey: {1} to exchange: {2}",
+						queueName, routingInfo.routingKey, routingInfo.exchange));
 		channel.queueBind(queueName, routingInfo.exchange, routingInfo.routingKey);
 		routingInfo.queueName = queueName;
 	}

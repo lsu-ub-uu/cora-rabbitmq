@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -40,6 +41,9 @@ import com.rabbitmq.client.Delivery;
 import com.rabbitmq.client.LongString;
 import com.rabbitmq.client.impl.LongStringHelper;
 
+import se.uu.ub.cora.logger.LoggerProvider;
+import se.uu.ub.cora.logger.spies.LoggerFactorySpy;
+import se.uu.ub.cora.logger.spies.LoggerSpy;
 import se.uu.ub.cora.messaging.AmqpMessageListenerRoutingInfo;
 import se.uu.ub.cora.messaging.MessageListener;
 import se.uu.ub.cora.messaging.MessagingInitializationException;
@@ -64,9 +68,13 @@ public class RabbitMqTopicListenerTest {
 	private static final String SOME_VHOST = "someVirtualHost";
 	private static final String SOME_QUEUE = "someQueue";
 	private MessageReceiverSpy messageReceiverSpy;
+	private LoggerFactorySpy loggerFactory;
 
 	@BeforeMethod
 	public void beforeMethod() {
+		loggerFactory = new LoggerFactorySpy();
+		LoggerProvider.setLoggerFactory(loggerFactory);
+
 		rabbitConnectionFactorySpy = new RabbitMqConnectionFactorySpy();
 		routingInfo = new AmqpMessageListenerRoutingInfo(SOME_HOST, SOME_PORT, SOME_VHOST,
 				SOME_QUEUE);
@@ -74,6 +82,11 @@ public class RabbitMqTopicListenerTest {
 				rabbitConnectionFactorySpy, routingInfo);
 
 		messageReceiverSpy = new MessageReceiverSpy();
+	}
+
+	@AfterMethod
+	private void afterMethod() {
+		LoggerProvider.setLoggerFactory(null);
 	}
 
 	@Test
@@ -268,6 +281,14 @@ public class RabbitMqTopicListenerTest {
 		channel.MCR.assertParameters("queueBind", 0, queueName, "someExchange", "someRoutingKey");
 		channel.MCR.assertParameters("basicConsume", 0, queueName, false,
 				getDeliverCallback(channel), getCancelCallback(channel));
+
+		LoggerSpy logger = getLogger(1);
+		logger.MCR.assertParameters("logInfoUsingMessage", 0,
+				"Binding queue: someQueueName using routingKey: someRoutingKey to exchange: someExchange");
+	}
+
+	private LoggerSpy getLogger(int callNumber) {
+		return (LoggerSpy) loggerFactory.MCR.getReturnValue("factorForClass", callNumber);
 	}
 
 	@Test
