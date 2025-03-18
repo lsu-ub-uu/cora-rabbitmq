@@ -70,13 +70,15 @@ public class RabbitMqTopicListener implements MessageListener {
 
 	private void tryTolisten(MessageReceiver messageReceiver) throws IOException, TimeoutException {
 		setupConnectionFactory();
-		connection = connectionFactory.newConnection();
-		Channel channel = connection.createChannel();
+		try (Connection connection = connectionFactory.newConnection();
+				Channel channel = connection.createChannel()) {
+			this.connection = connection;
 
-		if (autoCreateQueue()) {
-			createNewAutoCreadedChannel(channel);
+			if (autoCreateQueue()) {
+				createNewAutoCreadedChannel(channel);
+			}
+			startListening(messageReceiver, channel);
 		}
-		startListening(messageReceiver, channel);
 	}
 
 	private void createNewAutoCreadedChannel(Channel channel) throws IOException {
