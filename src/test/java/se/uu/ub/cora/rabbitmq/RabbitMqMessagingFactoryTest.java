@@ -27,6 +27,8 @@ import org.testng.annotations.Test;
 
 import com.rabbitmq.client.ConnectionFactory;
 
+import se.uu.ub.cora.logger.LoggerProvider;
+import se.uu.ub.cora.logger.spies.LoggerFactorySpy;
 import se.uu.ub.cora.messaging.AmqpMessageListenerRoutingInfo;
 import se.uu.ub.cora.messaging.AmqpMessageSenderRoutingInfo;
 import se.uu.ub.cora.messaging.MessagingFactory;
@@ -39,12 +41,15 @@ public class RabbitMqMessagingFactoryTest {
 	private static final String SOME_QUEUE = "someQueue";
 	private static final String SOME_EXCHANGE = "someExchange";
 	private static final String SOME_ROUTING_KEY = "someRoutingKey";
+	private LoggerFactorySpy loggerFactory;
 
 	AmqpMessageListenerRoutingInfo routingInfoListener;
 	private AmqpMessageSenderRoutingInfo routingInfoSender;
 
 	@BeforeTest
 	public void beforeTest() {
+		loggerFactory = new LoggerFactorySpy();
+		LoggerProvider.setLoggerFactory(loggerFactory);
 		routingInfoSender = new AmqpMessageSenderRoutingInfo(SOME_HOST, SOME_PORT, SOME_VHOST,
 				SOME_EXCHANGE, SOME_ROUTING_KEY);
 		routingInfoListener = new AmqpMessageListenerRoutingInfo(SOME_HOST, SOME_PORT, SOME_VHOST,
@@ -52,14 +57,14 @@ public class RabbitMqMessagingFactoryTest {
 	}
 
 	@Test
-	public void testInit() throws Exception {
+	public void testInit() {
 		RabbitMqMessagingFactory factory = new RabbitMqMessagingFactory();
 
 		assertTrue(factory instanceof MessagingFactory);
 	}
 
 	@Test
-	public void testFactorReturnsRabbitMqTopicSender() throws Exception {
+	public void testFactorReturnsRabbitMqTopicSender() {
 		RabbitMqMessagingFactory factory = new RabbitMqMessagingFactory();
 
 		RabbitMqTopicSender messageSender = (RabbitMqTopicSender) factory
@@ -71,7 +76,7 @@ public class RabbitMqMessagingFactoryTest {
 	}
 
 	@Test
-	public void testFactorReturnsRabbitMqTopicListener() throws Exception {
+	public void testFactorReturnsRabbitMqTopicListener() {
 		RabbitMqMessagingFactory factory = new RabbitMqMessagingFactory();
 
 		RabbitMqTopicListener messageListener = (RabbitMqTopicListener) factory
