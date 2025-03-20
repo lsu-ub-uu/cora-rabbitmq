@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -82,11 +81,6 @@ public class RabbitMqTopicListenerTest {
 				rabbitConnectionFactorySpy, routingInfo);
 
 		messageReceiverSpy = new MessageReceiverSpy();
-	}
-
-	@AfterMethod
-	private void afterMethod() {
-		LoggerProvider.setLoggerFactory(null);
 	}
 
 	@Test
@@ -190,7 +184,7 @@ public class RabbitMqTopicListenerTest {
 		messageReceiverSpy.MCR.assertParameter("receiveMessage", 0, "message", "Łódź");
 
 		Map<String, String> headersReceived = (Map<String, String>) messageReceiverSpy.MCR
-				.getValueForMethodNameAndCallNumberAndParameterName("receiveMessage", 0, "headers");
+				.getParameterForMethodAndCallNumberAndParameter("receiveMessage", 0, "headers");
 		assertEquals(headersReceived.get("__TypeId__"), "epc.messaging.amqp.EPCFedoraMessage");
 		assertEquals(headersReceived.get("ACTION"), "UPDATE");
 		assertEquals(headersReceived.get("PID"), "alvin-place:1");
@@ -198,7 +192,7 @@ public class RabbitMqTopicListenerTest {
 	}
 
 	private DeliverCallback getDeliverCallback(RabbitMqChannelSpy channelSpy) {
-		return (DeliverCallback) channelSpy.MCR.getValueForMethodNameAndCallNumberAndParameterName(
+		return (DeliverCallback) channelSpy.MCR.getParameterForMethodAndCallNumberAndParameter(
 				"basicConsume", 0, "deliverCallback");
 	}
 
@@ -237,7 +231,7 @@ public class RabbitMqTopicListenerTest {
 	}
 
 	private CancelCallback getCancelCallback(RabbitMqChannelSpy channel) {
-		return (CancelCallback) channel.MCR.getValueForMethodNameAndCallNumberAndParameterName(
+		return (CancelCallback) channel.MCR.getParameterForMethodAndCallNumberAndParameter(
 				"basicConsume", 0, "cancelCallback");
 	}
 
@@ -250,13 +244,13 @@ public class RabbitMqTopicListenerTest {
 		rabbitConnectionFactorySpy.MRV.setDefaultReturnValuesSupplier("newConnection",
 				() -> connectionSpy);
 
-		listener.listen(messageReceiverSpy);
-
-		RabbitMqChannelSpy channel = getChannel();
-		CancelCallback cancelCallback = getCancelCallback(channel);
-
 		try {
+			listener.listen(messageReceiverSpy);
+
+			RabbitMqChannelSpy channel = getChannel();
+			CancelCallback cancelCallback = getCancelCallback(channel);
 			cancelCallback.handle("consumerTag");
+
 			Assert.fail("Error should have been thrown");
 		} catch (Exception e) {
 			assertEquals(e.getMessage(),
